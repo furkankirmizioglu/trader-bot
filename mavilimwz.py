@@ -79,7 +79,8 @@ def trader(coin):
         if coin.hasShortOrder:
             if coin.prevPrice > coin.mavilimw:
                 common.cancel_order(asset=coin.pair, order_side=Client.SIDE_SELL)
-            logging.info(common.OPEN_ORDER_LOG.format(now, coin.pair, Client.SIDE_SELL))
+            else:
+                logging.info(common.OPEN_ORDER_LOG.format(now, coin.pair, Client.SIDE_SELL))
 
         # Bir önceki kapanış fiyatı mavilimden düşükse, ve satış flag == 1 ise satış yapılır.
         elif coin.prevPrice < coin.mavilimw:
