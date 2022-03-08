@@ -104,6 +104,7 @@ def cancel_order(asset, order_side):
     orders = client.get_open_orders(symbol=asset)
     order_id = orders[-1]['orderId']
     client.cancel_order(symbol=asset, orderId=order_id)
+    logging.info(CANCEL_ORDER_LOG.format(now, asset, order_side))
     tweet(status=CANCEL_ORDER_LOG.format(now, asset, order_side))
 
 
