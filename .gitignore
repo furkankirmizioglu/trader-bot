@@ -1,7 +1,5 @@
 /test/
 /old/
-/data/order_log.json
-/data/order_param.json
 /BinanceBot.properties
 /.idea/BinanceBot.iml
 /.idea/dictionaries/Furkan.xml
@@ -11,3 +9,4 @@
 /.idea/inspectionProfiles/Project_Default.xml
 /.idea/vcs.xml
 /.idea/.gitignore
+/data/
