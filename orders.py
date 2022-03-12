@@ -11,8 +11,8 @@ config.read('BinanceBot.properties')
 API_KEY = config.get('BinanceSignIn', 'apikey')
 API_SECRET_KEY = config.get('BinanceSignIn', 'apisecretkey')
 client = Client(api_key=API_KEY, api_secret=API_SECRET_KEY)
-SUBMIT_ORDER_LOG = "{0} - {3} order for {2} amount of {1} has been successfully submitted."
-TWEET_OCO_FORMAT = "{0} - {1} order for {2} has been successfully submitted.\nLimit : {3}\nStop-Limit: {4}"
+SUBMIT_ORDER_LOG = "{0} - {3} order for {2} amount of {1} has been submitted."
+TWEET_OCO_FORMAT = "{0} - {1} order for {2} has been submitted.\nLimit : {3}\nStop-Limit: {4}"
 logging.basicConfig(level=logging.INFO)
 
 
