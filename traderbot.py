@@ -145,7 +145,7 @@ def initializer(pair_list):
 
 
 # MAIN AND INFINITE LOOP FUNCTION.
-def robot():
+def bot():
     global coin_list, AMOUNT_V3
     for coin in coin_list:
         coin_list[coin_list.index(coin)] = coin + common.BUSD
@@ -171,4 +171,4 @@ def robot():
 start_now = datetime.now().replace(microsecond=0)
 # common.tweet(common.START_LOG.format(start_now, ", ".join(asset_list)))
 logging.info(common.START_LOG.format(start_now, ", ".join(coin_list)))
-robot()
+bot()
