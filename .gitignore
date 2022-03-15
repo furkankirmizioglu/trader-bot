@@ -6,6 +6,6 @@
 /.idea/inspectionProfiles/Project_Default.xml
 /.idea/vcs.xml
 /.idea/.gitignore
-/spot/BinanceBot.properties
+/BinanceBot.properties
 /spot/data/
 /futures/data/
