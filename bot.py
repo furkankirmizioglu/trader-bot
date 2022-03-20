@@ -26,7 +26,7 @@ def trader(coin):
             if coin.prevPrice < coin.mavilimw:
                 common.cancel_order(asset=coin.pair, order_side=Client.SIDE_BUY)
             else:
-                logging.info(common.OPEN_ORDER_LOG.format(now, coin.pair, Client.SIDE_BUY))
+                pass
 
         # Önceki kapanış fiyatı mavilimw'i yukarı kestiyse ve alım flag == 1 ise long pozisyon emri girilir.
         elif coin.prevPrice > coin.mavilimw:
@@ -80,7 +80,7 @@ def trader(coin):
             if coin.prevPrice > coin.mavilimw:
                 common.cancel_order(asset=coin.pair, order_side=Client.SIDE_SELL)
             else:
-                logging.info(common.OPEN_ORDER_LOG.format(now, coin.pair, Client.SIDE_SELL))
+                pass
 
         # Bir önceki kapanış fiyatı mavilimden düşükse, ve satış flag == 1 ise satış yapılır.
         elif coin.prevPrice < coin.mavilimw:
@@ -158,14 +158,13 @@ def bot():
                 database.set_islong(asset=coin, isLong=True)
             else:
                 database.set_islong(asset=coin, isLong=False)
-            while 1:
-                try:
-                    trader(coin=Coin(asset=coin))
-                    time.sleep(5)
-                    break
-                except Exception as e:
-                    print(e)
-                    break
+            try:
+                trader(coin=Coin(asset=coin))
+                time.sleep(5)
+            except Exception as e:
+                print(e)
+            else:
+                pass
 
 
 start_now = datetime.now().replace(microsecond=0)
