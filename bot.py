@@ -152,19 +152,20 @@ def bot():
     if initializer(pair_list=coin_list):
         logging.info(common.HAVE_ASSET_LOG.format(', '.join(initializer(pair_list=coin_list))))
     while 1:
-        AMOUNT_V3 = common.usd_alloc(coin_list)
-        for coin in coin_list:
-            if common.position_control(asset=coin):
-                database.set_islong(asset=coin, isLong=True)
-            else:
-                database.set_islong(asset=coin, isLong=False)
-            try:
-                trader(coin=Coin(asset=coin))
-                time.sleep(5)
-            except Exception as e:
-                print(e)
-            else:
-                pass
+        while 1:
+            AMOUNT_V3 = common.usd_alloc(coin_list)
+            for coin in coin_list:
+                if common.position_control(asset=coin):
+                    database.set_islong(asset=coin, isLong=True)
+                else:
+                    database.set_islong(asset=coin, isLong=False)
+                try:
+                    trader(coin=Coin(asset=coin))
+                    time.sleep(5)
+                except Exception as e:
+                    print(e)
+                else:
+                    pass
 
 
 start_now = datetime.now().replace(microsecond=0)
