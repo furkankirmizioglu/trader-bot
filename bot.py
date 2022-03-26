@@ -9,10 +9,11 @@ from binance.client import Client
 import common
 import database
 from coin import Coin
+from orders import oco_order
 
 logging.basicConfig(level=logging.INFO)
 AMOUNT_V3 = 0
-coin_list = ['NEAR', 'CRV', 'DYDX']
+coin_list = ['CRV', 'DYDX']
 
 
 def trader(coin):
@@ -41,12 +42,12 @@ def trader(coin):
             # Alım yapılacak coin miktarı belirlenir. Alımı engellememek için stop alım fiyatından hesaplanır.
             quantity = common.truncate(AMOUNT_V3 / stop_limit, coin.qtyDec)
             # Alım emri Binance'a iletilir. Tweet atılır, ORDER_LOG tablosu ve terminale log yazdırılır.
-            # oco_order(pair=coin.pair,
-            #           side=Client.SIDE_BUY,
-            #           quantity=quantity,
-            #           oco_price=target,
-            #           stop=stop,
-            #           stop_limit=stop_limit)
+            oco_order(pair=coin.pair,
+                      side=Client.SIDE_BUY,
+                      quantity=quantity,
+                      oco_price=target,
+                      stop=stop,
+                      stop_limit=stop_limit)
             logging.info(common.PROCESS_TIME_LOG.format(common.truncate((time.time() - start), 3)))
 
         # Z-SCORE -1'den küçük, son fiyat dip değerden düşük ve alım flag == 1 ise long pozisyon emri girilir.
@@ -63,12 +64,12 @@ def trader(coin):
             # Alım yapılacak coin miktarı belirlenir. Alımı engellememek için stop alım fiyatından hesaplanır.
             quantity = common.truncate(AMOUNT_V3 / stop_limit, coin.qtyDec)
             # Alım emri Binance'a iletilir. Tweet atılır, ORDER_LOG tablosu ve terminale log yazdırılır.
-            # oco_order(pair=coin.pair,
-            #           side=Client.SIDE_BUY,
-            #           quantity=quantity,
-            #           oco_price=target,
-            #           stop=stop,
-            #           stop_limit=stop_limit)
+            oco_order(pair=coin.pair,
+                      side=Client.SIDE_BUY,
+                      quantity=quantity,
+                      oco_price=target,
+                      stop=stop,
+                      stop_limit=stop_limit)
             database.set_order_flag(asset=coin.pair, side=Client.SIDE_SELL, flag=0)
             logging.info(common.PROCESS_TIME_LOG.format(common.truncate((time.time() - start), 3)))
 
@@ -93,12 +94,12 @@ def trader(coin):
             # Satış yapılacak coin adedi spot cüzdandan çekilir.
             quantity = common.truncate(common.wallet(asset=coin.pair), coin.qtyDec)
             # Satış emri Binance'a iletilir. Tweet atılır, ORDER_LOG tablosu ve terminale log yazdırılır.
-            # oco_order(pair=coin.pair,
-            #           side=Client.SIDE_SELL,
-            #           quantity=quantity,
-            #           oco_price=target,
-            #           stop=stop,
-            #           stop_limit=stop_limit)
+            oco_order(pair=coin.pair,
+                      side=Client.SIDE_SELL,
+                      quantity=quantity,
+                      oco_price=target,
+                      stop=stop,
+                      stop_limit=stop_limit)
             logging.info(common.PROCESS_TIME_LOG.format(common.truncate((time.time() - start), 3)))
 
         # Z puanı 1.5'ten büyük, son fiyat tepe değerden büyükse tepe satışı yapılır.
@@ -113,12 +114,12 @@ def trader(coin):
             # Satış yapılacak coin adedi spot cüzdandan çekilir.
             quantity = common.truncate(common.wallet(asset=coin.pair), coin.qtyDec)
             # Satış emri Binance'a iletilir. Tweet atılır, ORDER_LOG tablosu ve terminale log yazdırılır.
-            # oco_order(pair=coin.pair,
-            #           side=Client.SIDE_SELL,
-            #           quantity=quantity,
-            #           oco_price=target,
-            #           stop=stop,
-            #           stop_limit=stop_limit)
+            oco_order(pair=coin.pair,
+                      side=Client.SIDE_SELL,
+                      quantity=quantity,
+                      oco_price=target,
+                      stop=stop,
+                      stop_limit=stop_limit)
             database.set_order_flag(asset=coin.pair, side=Client.SIDE_BUY, flag=0)
             logging.info(common.PROCESS_TIME_LOG.format(common.truncate((time.time() - start), 3)))
 
@@ -161,7 +162,7 @@ def bot():
                     else:
                         database.set_islong(asset=coin, isLong=False)
                     trader(coin=Coin(asset=coin))
-                    time.sleep(5)
+                    time.sleep(15)
                 except Exception as e:
                     print(e)
                 else:
@@ -169,6 +170,6 @@ def bot():
 
 
 start_now = datetime.now().replace(microsecond=0)
-# common.tweet(common.START_LOG.format(start_now, ", ".join(asset_list)))
+common.tweet(common.START_LOG.format(start_now, ", ".join(coin_list)))
 logging.info(common.START_LOG.format(start_now, ", ".join(coin_list)))
 bot()
