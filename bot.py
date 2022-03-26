@@ -12,7 +12,7 @@ from coin import Coin
 
 logging.basicConfig(level=logging.INFO)
 AMOUNT_V3 = 0
-coin_list = ['CRV', 'DYDX']
+coin_list = ['NEAR', 'CRV', 'DYDX']
 
 
 def trader(coin):
@@ -35,9 +35,9 @@ def trader(coin):
             # Son fiyat - ATR değeri hesaplanır. Bu limit alım yeridir.
             target = common.truncate(coin.prevPrice - coin.atr, coin.priceDec)
             # Son fiyat + ATR değerinin %2 eksiğine stop trigger girilir.
-            stop = common.truncate(coin.prevPrice + (coin.atr * 98 / 100), coin.priceDec)
+            stop = common.truncate(coin.mavilimw + (coin.atr * 98 / 100), coin.priceDec)
             # Son fiyattan bir ATR değeri fazlası hesaplanır. Bu stop alım yeridir.
-            stop_limit = common.truncate(coin.prevPrice + coin.atr, coin.priceDec)
+            stop_limit = common.truncate(coin.mavilimw + coin.atr, coin.priceDec)
             # Alım yapılacak coin miktarı belirlenir. Alımı engellememek için stop alım fiyatından hesaplanır.
             quantity = common.truncate(AMOUNT_V3 / stop_limit, coin.qtyDec)
             # Alım emri Binance'a iletilir. Tweet atılır, ORDER_LOG tablosu ve terminale log yazdırılır.
@@ -87,9 +87,9 @@ def trader(coin):
             # Son fiyat + ATR değeri hesaplanır. Bu limit satış yeridir.
             target = common.truncate(coin.prevPrice + coin.atr, coin.priceDec)
             # Son fiyat - ATR değerinin %2 fazlası hesaplanır. Bu stop trigger yeridir.
-            stop = common.truncate(coin.prevPrice - (coin.atr * 98 / 100), coin.priceDec)
+            stop = common.truncate(coin.mavilimw - (coin.atr * 98 / 100), coin.priceDec)
             # Son fiyat - ATR değeri hesaplanır. Bu stop satış yeridir.
-            stop_limit = common.truncate(coin.prevPrice - coin.atr, coin.priceDec)
+            stop_limit = common.truncate(coin.mavilimw - coin.atr, coin.priceDec)
             # Satış yapılacak coin adedi spot cüzdandan çekilir.
             quantity = common.truncate(common.wallet(asset=coin.pair), coin.qtyDec)
             # Satış emri Binance'a iletilir. Tweet atılır, ORDER_LOG tablosu ve terminale log yazdırılır.
@@ -155,11 +155,11 @@ def bot():
         while 1:
             AMOUNT_V3 = common.usd_alloc(coin_list)
             for coin in coin_list:
-                if common.position_control(asset=coin):
-                    database.set_islong(asset=coin, isLong=True)
-                else:
-                    database.set_islong(asset=coin, isLong=False)
                 try:
+                    if common.position_control(asset=coin):
+                        database.set_islong(asset=coin, isLong=True)
+                    else:
+                        database.set_islong(asset=coin, isLong=False)
                     trader(coin=Coin(asset=coin))
                     time.sleep(5)
                 except Exception as e:
