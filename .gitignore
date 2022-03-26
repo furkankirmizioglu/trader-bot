@@ -1,6 +1,3 @@
-/test/
-/old/
-/BinanceBot.properties
 /.idea/BinanceBot.iml
 /.idea/dictionaries/Furkan.xml
 /.idea/misc.xml
@@ -9,4 +6,6 @@
 /.idea/inspectionProfiles/Project_Default.xml
 /.idea/vcs.xml
 /.idea/.gitignore
-/data/
+/BinanceBot.properties
+/spot/data/
+/futures/data/

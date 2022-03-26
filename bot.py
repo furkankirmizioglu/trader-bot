@@ -12,7 +12,7 @@ from coin import Coin
 
 logging.basicConfig(level=logging.INFO)
 AMOUNT_V3 = 0
-coin_list = ['CRV', 'DYDX']
+coin_list = ['NEAR', 'CRV', 'DYDX']
 
 
 def trader(coin):
@@ -26,7 +26,7 @@ def trader(coin):
             if coin.prevPrice < coin.mavilimw:
                 common.cancel_order(asset=coin.pair, order_side=Client.SIDE_BUY)
             else:
-                logging.info(common.OPEN_ORDER_LOG.format(now, coin.pair, Client.SIDE_BUY))
+                pass
 
         # Önceki kapanış fiyatı mavilimw'i yukarı kestiyse ve alım flag == 1 ise long pozisyon emri girilir.
         elif coin.prevPrice > coin.mavilimw:
@@ -35,9 +35,9 @@ def trader(coin):
             # Son fiyat - ATR değeri hesaplanır. Bu limit alım yeridir.
             target = common.truncate(coin.prevPrice - coin.atr, coin.priceDec)
             # Son fiyat + ATR değerinin %2 eksiğine stop trigger girilir.
-            stop = common.truncate(coin.prevPrice + (coin.atr * 98 / 100), coin.priceDec)
+            stop = common.truncate(coin.mavilimw + (coin.atr * 98 / 100), coin.priceDec)
             # Son fiyattan bir ATR değeri fazlası hesaplanır. Bu stop alım yeridir.
-            stop_limit = common.truncate(coin.prevPrice + coin.atr, coin.priceDec)
+            stop_limit = common.truncate(coin.mavilimw + coin.atr, coin.priceDec)
             # Alım yapılacak coin miktarı belirlenir. Alımı engellememek için stop alım fiyatından hesaplanır.
             quantity = common.truncate(AMOUNT_V3 / stop_limit, coin.qtyDec)
             # Alım emri Binance'a iletilir. Tweet atılır, ORDER_LOG tablosu ve terminale log yazdırılır.
@@ -80,16 +80,16 @@ def trader(coin):
             if coin.prevPrice > coin.mavilimw:
                 common.cancel_order(asset=coin.pair, order_side=Client.SIDE_SELL)
             else:
-                logging.info(common.OPEN_ORDER_LOG.format(now, coin.pair, Client.SIDE_SELL))
+                pass
 
         # Bir önceki kapanış fiyatı mavilimden düşükse, ve satış flag == 1 ise satış yapılır.
         elif coin.prevPrice < coin.mavilimw:
             # Son fiyat + ATR değeri hesaplanır. Bu limit satış yeridir.
             target = common.truncate(coin.prevPrice + coin.atr, coin.priceDec)
             # Son fiyat - ATR değerinin %2 fazlası hesaplanır. Bu stop trigger yeridir.
-            stop = common.truncate(coin.prevPrice - (coin.atr * 98 / 100), coin.priceDec)
+            stop = common.truncate(coin.mavilimw - (coin.atr * 98 / 100), coin.priceDec)
             # Son fiyat - ATR değeri hesaplanır. Bu stop satış yeridir.
-            stop_limit = common.truncate(coin.prevPrice - coin.atr, coin.priceDec)
+            stop_limit = common.truncate(coin.mavilimw - coin.atr, coin.priceDec)
             # Satış yapılacak coin adedi spot cüzdandan çekilir.
             quantity = common.truncate(common.wallet(asset=coin.pair), coin.qtyDec)
             # Satış emri Binance'a iletilir. Tweet atılır, ORDER_LOG tablosu ve terminale log yazdırılır.
@@ -145,30 +145,30 @@ def initializer(pair_list):
 
 
 # MAIN AND INFINITE LOOP FUNCTION.
-def robot():
+def bot():
     global coin_list, AMOUNT_V3
     for coin in coin_list:
         coin_list[coin_list.index(coin)] = coin + common.BUSD
     if initializer(pair_list=coin_list):
         logging.info(common.HAVE_ASSET_LOG.format(', '.join(initializer(pair_list=coin_list))))
     while 1:
-        AMOUNT_V3 = common.usd_alloc(coin_list)
-        for coin in coin_list:
-            if common.position_control(asset=coin):
-                database.set_islong(asset=coin, isLong=True)
-            else:
-                database.set_islong(asset=coin, isLong=False)
-            while 1:
+        while 1:
+            AMOUNT_V3 = common.usd_alloc(coin_list)
+            for coin in coin_list:
                 try:
+                    if common.position_control(asset=coin):
+                        database.set_islong(asset=coin, isLong=True)
+                    else:
+                        database.set_islong(asset=coin, isLong=False)
                     trader(coin=Coin(asset=coin))
                     time.sleep(5)
-                    break
                 except Exception as e:
                     print(e)
-                    break
+                else:
+                    pass
 
 
 start_now = datetime.now().replace(microsecond=0)
 # common.tweet(common.START_LOG.format(start_now, ", ".join(asset_list)))
 logging.info(common.START_LOG.format(start_now, ", ".join(coin_list)))
-robot()
+bot()
