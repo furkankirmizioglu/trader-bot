@@ -19,7 +19,6 @@ coin_list = ['CRV', 'DYDX']
 def trader(asset):
     start = time.time()
     coin = Coin(asset=asset)
-    now = datetime.now().replace(microsecond=0)
 
     # BUY CONDITIONS.
     # If didn't purchase this asset before and buy flag equals 1, then function enters buy conditions.
@@ -37,6 +36,7 @@ def trader(asset):
 
             # If BUSD amount is less than minimum USD ($12) raise an exception and quit.
             if AMOUNT_V3 < common.MIN_USD:
+                now = datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
                 raise Exception(logging.error(common.MIN_AMOUNT_EXCEPTION_LOG.format(now, coin.pair, common.MIN_USD)))
 
             # Previous close price - ATR for limit buy level.
@@ -71,11 +71,15 @@ def trader(asset):
         # However, price will be less than mavilim price. So sets sell flag to 0 for preventing sell order.
         elif coin.zScore < -1 and coin.lastPrice < coin.bottom:
             if AMOUNT_V3 < common.MIN_USD:
+                now = datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
                 raise Exception(logging.error(common.MIN_AMOUNT_EXCEPTION_LOG.format(now, coin.pair, common.MIN_USD)))
+
             limit = common.truncate(coin.lastPrice - coin.atr, coin.priceDec)
+
             stop = common.truncate(coin.lastPrice + (coin.atr * 98 / 100), coin.priceDec)
             stop_limit = common.truncate(coin.lastPrice + coin.atr, coin.priceDec)
             quantity = common.truncate(AMOUNT_V3 / stop_limit, coin.qtyDec)
+
             oco_order(pair=coin.pair,
                       side=Client.SIDE_BUY,
                       quantity=quantity,
@@ -197,7 +201,7 @@ def bot():
                     pass
 
 
-start_now = datetime.now().replace(microsecond=0)
+start_now = datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
 common.tweet(common.START_LOG.format(start_now, ", ".join(coin_list)))
 logging.info(common.START_LOG.format(start_now, ", ".join(coin_list)))
 bot()
