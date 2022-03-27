@@ -16,117 +16,145 @@ AMOUNT_V3 = 0
 coin_list = ['CRV', 'DYDX']
 
 
-def trader(coin):
+def trader(asset):
     start = time.time()
+    coin = Coin(asset=asset)
     now = datetime.now().replace(microsecond=0)
-    # BUY CONDITIONS.
-    if not coin.is_long and coin.buyFlag == 1:  # Long pozisyon yoksa ve alım flag'i 1 ise buraya girilir.
 
-        # Önceden girilmiş alım emri varsa terminale log atılır ve çıkılır.
+    # BUY CONDITIONS.
+    # If didn't purchase this asset before and buy flag equals 1, then function enters buy conditions.
+    if not coin.is_long and coin.buyFlag == 1:
+
+        # If already have a buy order but trend signal has broken, then cancel the order. Else just pass.
         if coin.hasLongOrder:
             if coin.prevPrice < coin.mavilimw:
                 common.cancel_order(asset=coin.pair, order_side=Client.SIDE_BUY)
             else:
                 pass
 
-        # Önceki kapanış fiyatı mavilimw'i yukarı kestiyse ve alım flag == 1 ise long pozisyon emri girilir.
+        # If previous close price is greater than mavilim price, then enter this condition.
         elif coin.prevPrice > coin.mavilimw:
+
+            # If BUSD amount is less than minimum USD ($12) raise an exception and quit.
             if AMOUNT_V3 < common.MIN_USD:
                 raise Exception(logging.error(common.MIN_AMOUNT_EXCEPTION_LOG.format(now, coin.pair, common.MIN_USD)))
-            # Son fiyat - ATR değeri hesaplanır. Bu limit alım yeridir.
-            target = common.truncate(coin.prevPrice - coin.atr, coin.priceDec)
-            # Son fiyat + ATR değerinin %2 eksiğine stop trigger girilir.
-            stop = common.truncate(coin.mavilimw + (coin.atr * 98 / 100), coin.priceDec)
-            # Son fiyattan bir ATR değeri fazlası hesaplanır. Bu stop alım yeridir.
-            stop_limit = common.truncate(coin.mavilimw + coin.atr, coin.priceDec)
-            # Alım yapılacak coin miktarı belirlenir. Alımı engellememek için stop alım fiyatından hesaplanır.
+
+            # Previous close price - ATR for limit buy level.
+            limit = common.truncate(coin.prevPrice - coin.atr, coin.priceDec)
+
+            # If previous close price is greater than mavilim + atr, then enter this condition.
+            if coin.prevPrice > (coin.mavilimw + coin.atr):
+                # Previous price + (ATR * 98 / 200) for stop trigger.
+                stop = common.truncate(coin.prevPrice + (coin.atr * 49 / 100), coin.priceDec)
+                # Previous price + (ATR / 2) for stop limit.
+                stop_limit = common.truncate(coin.prevPrice + (coin.atr / 2), coin.priceDec)
+
+            else:
+                # Mavilim price + (ATR * 98 / 200) for stop trigger.
+                stop = common.truncate(coin.mavilimw + (coin.atr * 98 / 100), coin.priceDec)
+                # Mavilim price + ATR for stop limit.
+                stop_limit = common.truncate(coin.mavilimw + coin.atr, coin.priceDec)
+
+            # The purchase amount is calculated by USDT amount / stop limit price.
             quantity = common.truncate(AMOUNT_V3 / stop_limit, coin.qtyDec)
-            # Alım emri Binance'a iletilir. Tweet atılır, ORDER_LOG tablosu ve terminale log yazdırılır.
+
+            # Submit order to Binance. Send tweet, write log to ORDER_LOG table and terminal.
             oco_order(pair=coin.pair,
                       side=Client.SIDE_BUY,
                       quantity=quantity,
-                      oco_price=target,
+                      oco_price=limit,
                       stop=stop,
                       stop_limit=stop_limit)
             logging.info(common.PROCESS_TIME_LOG.format(common.truncate((time.time() - start), 3)))
 
-        # Z-SCORE -1'den küçük, son fiyat dip değerden düşük ve alım flag == 1 ise long pozisyon emri girilir.
-        # Bu sırada fiyat mavilim'den düşük olduğu için satış yapılmasına izin verilmez. Satış flag'i 0 olarak girilir.
+        # If Z-SCORE is less than -1 and last price is less than bottom level, submit a buy order.
+        # However, price will be less than mavilim price. So sets sell flag to 0 for preventing sell order.
         elif coin.zScore < -1 and coin.lastPrice < coin.bottom:
             if AMOUNT_V3 < common.MIN_USD:
                 raise Exception(logging.error(common.MIN_AMOUNT_EXCEPTION_LOG.format(now, coin.pair, common.MIN_USD)))
-            # Son fiyat - ATR değeri hesaplanır. Bu limit alım yeridir.
-            target = common.truncate(coin.lastPrice - coin.atr, coin.priceDec)
-            # Son fiyat + ATR değerinin %2 eksiği hesaplanır. Bu stop trigger yeridir.
+            limit = common.truncate(coin.lastPrice - coin.atr, coin.priceDec)
             stop = common.truncate(coin.lastPrice + (coin.atr * 98 / 100), coin.priceDec)
-            # Son fiyat + ATR değeri hesaplanır. Bu stop alım yeridir.
             stop_limit = common.truncate(coin.lastPrice + coin.atr, coin.priceDec)
-            # Alım yapılacak coin miktarı belirlenir. Alımı engellememek için stop alım fiyatından hesaplanır.
             quantity = common.truncate(AMOUNT_V3 / stop_limit, coin.qtyDec)
-            # Alım emri Binance'a iletilir. Tweet atılır, ORDER_LOG tablosu ve terminale log yazdırılır.
             oco_order(pair=coin.pair,
                       side=Client.SIDE_BUY,
                       quantity=quantity,
-                      oco_price=target,
+                      oco_price=limit,
                       stop=stop,
                       stop_limit=stop_limit)
             database.set_order_flag(asset=coin.pair, side=Client.SIDE_SELL, flag=0)
             logging.info(common.PROCESS_TIME_LOG.format(common.truncate((time.time() - start), 3)))
 
     # SELL CONDITIONS.
-    elif coin.is_long and coin.sellFlag == 1:  # Long pozisyon varsa buraya girilir.
+    # If already purchased and sell flag equals 1, then enter this condition.
+    elif coin.is_long and coin.sellFlag == 1:
 
-        # Önceden girilmiş satış emri varsa terminale log atılır ve çıkılır.
+        # If there is already a sell order but sell signal has broken, then cancel the sell order.
         if coin.hasShortOrder:
             if coin.prevPrice > coin.mavilimw:
                 common.cancel_order(asset=coin.pair, order_side=Client.SIDE_SELL)
             else:
                 pass
 
-        # Bir önceki kapanış fiyatı mavilimden düşükse, ve satış flag == 1 ise satış yapılır.
+        # If previous close price is less than mavilim price submit a sell order.
         elif coin.prevPrice < coin.mavilimw:
-            # Son fiyat + ATR değeri hesaplanır. Bu limit satış yeridir.
-            target = common.truncate(coin.prevPrice + coin.atr, coin.priceDec)
-            # Son fiyat - ATR değerinin %2 fazlası hesaplanır. Bu stop trigger yeridir.
-            stop = common.truncate(coin.mavilimw - (coin.atr * 98 / 100), coin.priceDec)
-            # Son fiyat - ATR değeri hesaplanır. Bu stop satış yeridir.
-            stop_limit = common.truncate(coin.mavilimw - coin.atr, coin.priceDec)
-            # Satış yapılacak coin adedi spot cüzdandan çekilir.
+
+            # Previous close price + ATR value for limit sell level.
+            limit = common.truncate(coin.prevPrice + coin.atr, coin.priceDec)
+
+            # If previous close price is less than mavilim + ATR, then enter this condition.
+            if coin.prevPrice < (coin.mavilimw - coin.atr):
+                # Previous close price - (ATR * 98 / 200) for stop trigger.
+                stop = common.truncate(coin.prevPrice - (coin.atr * 49 / 100), coin.priceDec)
+                # Previous close price - (ATR / 2) for stop limit.
+                stop_limit = common.truncate(coin.prevPrice - (coin.atr / 2), coin.priceDec)
+            else:
+                # Mavilim price - (ATR * 98 / 200) for stop trigger.
+                stop = common.truncate(coin.mavilimw - (coin.atr * 98 / 100), coin.priceDec)
+                # Mavilim price - (ATR / 2) for stop limit.
+                stop_limit = common.truncate(coin.mavilimw - coin.atr, coin.priceDec)
+
+            # Coin amount information is getting from spot wallet.
             quantity = common.truncate(common.wallet(asset=coin.pair), coin.qtyDec)
-            # Satış emri Binance'a iletilir. Tweet atılır, ORDER_LOG tablosu ve terminale log yazdırılır.
+            # Submit sell order to Binance. Send tweet, write log to ORDER_LOG table and terminal.
             oco_order(pair=coin.pair,
                       side=Client.SIDE_SELL,
                       quantity=quantity,
-                      oco_price=target,
+                      oco_price=limit,
                       stop=stop,
                       stop_limit=stop_limit)
             logging.info(common.PROCESS_TIME_LOG.format(common.truncate((time.time() - start), 3)))
 
-        # Z puanı 1.5'ten büyük, son fiyat tepe değerden büyükse tepe satışı yapılır.
-        # Son fiyat mavilimin üstünde olduğundan alım yapmaması için alım flag'i 0 olarak setlenir.
+        # IF Z-SCORE is greater than 1.5 and last price is greater than top level, then submit a top sell order.
+        # However, price will be greater than mavilim price. So it sets buy flag to 0 for preventing buy order.
         elif coin.zScore > 1.5 and coin.lastPrice > coin.top:
-            # Son fiyat + ATR değeri hesaplanır. Bu limit satış yeridir.
-            target = common.truncate(coin.lastPrice + coin.atr, coin.priceDec)
-            # Son fiyat - ATR değerinin %2 fazlası hesaplanır. Bu stop trigger yeridir.
+
+            # Last price + ATR for limit sell level.
+            limit = common.truncate(coin.lastPrice + coin.atr, coin.priceDec)
+
+            # Last price - (ATR * 98 / 200) for stop trigger level.
             stop = common.truncate(coin.lastPrice - (coin.atr * 98 / 100), coin.priceDec)
-            # Son fiyat - ATR değeri hesaplanır. Bu stop satış yeridir.
+
+            # Last price - ATR for stop limit level.
             stop_limit = common.truncate(coin.lastPrice - coin.atr, coin.priceDec)
-            # Satış yapılacak coin adedi spot cüzdandan çekilir.
+
+            # Coin amount information is getting from spot wallet.
             quantity = common.truncate(common.wallet(asset=coin.pair), coin.qtyDec)
-            # Satış emri Binance'a iletilir. Tweet atılır, ORDER_LOG tablosu ve terminale log yazdırılır.
+
+            # Submit sell order to Binance. Send tweet, write log to ORDER_LOG table and terminal.
             oco_order(pair=coin.pair,
                       side=Client.SIDE_SELL,
                       quantity=quantity,
-                      oco_price=target,
+                      oco_price=limit,
                       stop=stop,
                       stop_limit=stop_limit)
             database.set_order_flag(asset=coin.pair, side=Client.SIDE_BUY, flag=0)
             logging.info(common.PROCESS_TIME_LOG.format(common.truncate((time.time() - start), 3)))
 
-    # Önceki kapanış fiyatı mavilimw'i yukarı keser, sat flag'i 0 ise ve alım emri yoksa satış yapmasına izin verilir.
+    # If previous close price crosses up mavilim and sell flag is 0 then set sell flag to 1.
     if coin.prevPrice > coin.mavilimw and coin.sellFlag == 0:
         database.set_order_flag(asset=coin.pair, side=Client.SIDE_SELL, flag=1)
-    # Önceki kapanış fiyatı mavilimw'i aşağı keserse ve al flag'i 0 ise alım yapmasına izin verilir.
+    # IF previous close price crosses down mavilim and buy flag is 0 then buy flag to 1
     elif coin.prevPrice < coin.mavilimw and coin.buyFlag == 0:
         database.set_order_flag(asset=coin.pair, side=Client.SIDE_BUY, flag=1)
 
@@ -161,7 +189,7 @@ def bot():
                         database.set_islong(asset=coin, isLong=True)
                     else:
                         database.set_islong(asset=coin, isLong=False)
-                    trader(coin=Coin(asset=coin))
+                    trader(asset=coin)
                     time.sleep(15)
                 except Exception as e:
                     print(e)
