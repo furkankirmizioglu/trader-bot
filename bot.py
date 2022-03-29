@@ -45,9 +45,9 @@ def trader(asset):
             # If previous close price is greater than mavilim + atr, then enter this condition.
             if coin.prevPrice > (coin.mavilimw + coin.atr):
                 # Previous price + (ATR * 49 / 100) for stop trigger.
-                stop = common.truncate(coin.prevPrice + (coin.atr * 49 / 100), coin.priceDec)
+                stop = common.truncate(coin.prevPrice + (coin.atr * 98 / 100), coin.priceDec)
                 # Previous price + (ATR / 2) for stop limit.
-                stop_limit = common.truncate(coin.prevPrice + (coin.atr / 2), coin.priceDec)
+                stop_limit = common.truncate(coin.prevPrice + coin.atr, coin.priceDec)
 
             else:
                 # Mavilim price + (ATR * 98 / 100) for stop trigger.
@@ -109,9 +109,9 @@ def trader(asset):
             # If previous close price is less than mavilim + ATR, then enter this condition.
             if coin.prevPrice < (coin.mavilimw - coin.atr):
                 # Previous close price - (ATR * 49 / 100) for stop trigger.
-                stop = common.truncate(coin.prevPrice - (coin.atr * 49 / 100), coin.priceDec)
+                stop = common.truncate(coin.prevPrice - (coin.atr * 98 / 100), coin.priceDec)
                 # Previous close price - (ATR / 2) for stop limit.
-                stop_limit = common.truncate(coin.prevPrice - (coin.atr / 2), coin.priceDec)
+                stop_limit = common.truncate(coin.prevPrice - coin.atr, coin.priceDec)
             else:
                 # Mavilim price - (ATR * 98 / 100) for stop trigger.
                 stop = common.truncate(coin.mavilimw - (coin.atr * 98 / 100), coin.priceDec)
@@ -186,9 +186,9 @@ def bot():
         logging.info(common.HAVE_ASSET_LOG.format(', '.join(initializer(pair_list=coin_list))))
     while 1:
         while 1:
-            AMOUNT_V3 = common.usd_alloc(coin_list)
             for coin in coin_list:
                 try:
+                    AMOUNT_V3 = common.usd_alloc(coin_list)
                     if common.position_control(asset=coin):
                         database.set_islong(asset=coin, isLong=True)
                     else:
