@@ -135,10 +135,10 @@ def trader(asset):
             # Last price + ATR for limit sell level.
             limit = common.truncate(coin.lastPrice + coin.atr, coin.priceDec)
 
-            # Last price - (ATR * 98 / 200) for stop trigger level.
+            # Last price - (ATR * 45 / 100) for stop trigger level.
             stop = common.truncate(coin.lastPrice - (coin.atr * 45 / 100), coin.priceDec)
 
-            # Last price - ATR for stop limit level.
+            # Last price - (ATR / 2) for stop limit level.
             stop_limit = common.truncate(coin.lastPrice - coin.atr / 2, coin.priceDec)
 
             # Coin amount information is getting from spot wallet.
