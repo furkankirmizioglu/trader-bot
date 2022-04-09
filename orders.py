@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO)
 
 # Submit spot limit orders to Binance.
 def limit_order(pair, side, quantity, limit_price):
-    now = datetime.datetime.now().replace(microsecond=0)
+    now = datetime.datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
     try:
         client.create_order(symbol=pair,
                             side=side,
@@ -36,7 +36,7 @@ def limit_order(pair, side, quantity, limit_price):
 
 # Submit spot oco orders to Binance.
 def oco_order(pair, side, quantity, oco_price, stop, stop_limit):
-    now = datetime.datetime.now().replace(microsecond=0)
+    now = datetime.datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
     try:
         response = client.create_oco_order(symbol=pair,
                                            side=side,
@@ -49,7 +49,7 @@ def oco_order(pair, side, quantity, oco_price, stop, stop_limit):
         log = SUBMIT_ORDER_LOG.format(now, pair, quantity, side.upper())
         logging.info(log)
         tweet(TWEET_OCO_FORMAT.format(now, side.capitalize(), pair, oco_price, stop_limit))
-        order_log(instance_id=now.strftime("%d/%m/%Y %H:%M:%S"),
+        order_log(instance_id=now,
                   orderId=orderId,
                   asset=pair,
                   side=side,
@@ -66,7 +66,7 @@ def oco_order(pair, side, quantity, oco_price, stop, stop_limit):
 
 # Submit leveraged market orders to Binance.
 def market_order(pair, order_side, quantity):
-    now = datetime.datetime.now().replace(microsecond=0)
+    now = datetime.datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
     try:
         client.create_order(symbol=pair,
                             side=order_side,

@@ -13,7 +13,7 @@ from orders import oco_order
 
 logging.basicConfig(level=logging.INFO)
 AMOUNT_V3 = 0
-coin_list = ['CRV', 'DYDX']
+coin_list = ['DYDX']
 
 
 def trader(asset):
@@ -75,9 +75,8 @@ def trader(asset):
                 raise Exception(logging.error(common.MIN_AMOUNT_EXCEPTION_LOG.format(now, coin.pair, common.MIN_USD)))
 
             limit = common.truncate(coin.lastPrice - coin.atr, coin.priceDec)
-
-            stop = common.truncate(coin.lastPrice + (coin.atr * 98 / 100), coin.priceDec)
-            stop_limit = common.truncate(coin.lastPrice + coin.atr, coin.priceDec)
+            stop = common.truncate(coin.lastPrice + (coin.atr * 45 / 100), coin.priceDec)
+            stop_limit = common.truncate(coin.lastPrice + coin.atr / 2, coin.priceDec)
             quantity = common.truncate(AMOUNT_V3 / stop_limit, coin.qtyDec)
 
             oco_order(pair=coin.pair,
@@ -108,9 +107,9 @@ def trader(asset):
 
             # If previous close price is less than mavilim + ATR, then enter this condition.
             if coin.prevPrice < (coin.mavilimw - coin.atr):
-                # Previous close price - (ATR * 49 / 100) for stop trigger.
+                # Previous close price - (ATR * 98 / 100) for stop trigger.
                 stop = common.truncate(coin.prevPrice - (coin.atr * 98 / 100), coin.priceDec)
-                # Previous close price - (ATR / 2) for stop limit.
+                # Previous close price - ATR for stop limit.
                 stop_limit = common.truncate(coin.prevPrice - coin.atr, coin.priceDec)
             else:
                 # Mavilim price - (ATR * 98 / 100) for stop trigger.
@@ -137,10 +136,10 @@ def trader(asset):
             limit = common.truncate(coin.lastPrice + coin.atr, coin.priceDec)
 
             # Last price - (ATR * 98 / 200) for stop trigger level.
-            stop = common.truncate(coin.lastPrice - (coin.atr * 98 / 100), coin.priceDec)
+            stop = common.truncate(coin.lastPrice - (coin.atr * 45 / 100), coin.priceDec)
 
             # Last price - ATR for stop limit level.
-            stop_limit = common.truncate(coin.lastPrice - coin.atr, coin.priceDec)
+            stop_limit = common.truncate(coin.lastPrice - coin.atr / 2, coin.priceDec)
 
             # Coin amount information is getting from spot wallet.
             quantity = common.truncate(common.wallet(asset=coin.pair), coin.qtyDec)
