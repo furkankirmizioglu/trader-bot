@@ -13,7 +13,7 @@ from orders import oco_order
 
 logging.basicConfig(level=logging.INFO)
 AMOUNT_V3 = 0
-coin_list = ['DYDX']
+coin_list = ['CRV', 'DYDX']
 
 
 def trader(asset):
