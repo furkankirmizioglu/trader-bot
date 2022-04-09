@@ -22,8 +22,8 @@ class Coin:
     bottom = 0
     buyFlag = ""
     sellFlag = ""
-    hasLongOrder = None
-    hasShortOrder = None
+    hasBuyOrder = None
+    hasSellOrder = None
 
     def __init__(self, asset):
         self.pair = asset
@@ -37,6 +37,6 @@ class Coin:
         self.lastPrice = self.candles[-1]
         self.prevPrice = self.candles[-2]
         self.buyFlag, self.sellFlag = database.get_order_flag(asset=self.pair)
-        self.hasLongOrder = database.get_hasBuyOrder(asset=self.pair)
-        self.hasShortOrder = database.get_hasSellOrder(asset=self.pair)
+        self.hasBuyOrder = database.get_hasBuyOrder(asset=self.pair)
+        self.hasSellOrder = database.get_hasSellOrder(asset=self.pair)
         del self.candles
