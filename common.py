@@ -4,8 +4,7 @@ import math
 from datetime import datetime, timedelta
 import tweepy
 from binance.client import Client
-
-from database import get_islong
+import database
 
 BUSD = 'BUSD'
 USDT = 'USDT'
@@ -63,7 +62,7 @@ def price_action(symbol, interval):
     timestampsec = int(datetime.timestamp(timestampsec))
     exp = len(str(timestamp)) - len(str(timestampsec))
     timestampsec *= pow(10, exp)
-    second_set = client.get_klines(symbol=symbol, interval=interval, limit=1000,endTime=timestampsec)
+    second_set = client.get_klines(symbol=symbol, interval=interval, limit=1000, endTime=timestampsec)
     joined_list = [*second_set, *first_set]
     return joined_list
 
@@ -100,7 +99,7 @@ def open_order_control(asset, order_side):
 
 # Cancels given order.
 def cancel_order(asset, order_side):
-    now = datetime.now().replace(microsecond=0)
+    now = datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
     orders = client.get_open_orders(symbol=asset)
     order_id = orders[-1]['orderId']
     client.cancel_order(symbol=asset, orderId=order_id)
@@ -110,10 +109,10 @@ def cancel_order(asset, order_side):
 
 # Sets amount of purchasing dynamically.
 def usd_alloc(asset_list):
-    priceDec, qtyDec = decimal_place(asset=BUSD + USDT)
+    priceDec, qtyDec = database.get_decimals(asset=BUSD + USDT)
     divider = 0
     for x in asset_list:
-        has_asset = get_islong(x)
+        has_asset = database.get_islong(x)
         has_order = open_order_control(asset=x, order_side=Client.SIDE_BUY)
         if not has_asset and not has_order:
             divider += 1

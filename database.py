@@ -1,24 +1,26 @@
 # THIS PYTHON SCRIPT
 # CONTAINS DATABASE FUNCTIONS
 from tinydb import TinyDB, Query
+import common
 
 
-def init_data(asset):
+def init_data(asset, isLong):
     parameter = TinyDB('data/order_param.json')
     query = Query()
     result = parameter.search(query.asset == asset)
+    priceDec, qtyDec = common.decimal_place(asset=asset)
+    buy = 0 if isLong else 1
+    sell = 1 if isLong else 0
     if len(result) == 0:
-        parameter.insert({'asset': asset, 'isLong': None, 'buy': -1, 'sell': -1})
+        parameter.insert(
+            {'asset': asset, 'isLong': isLong, 'buy': buy, 'sell': sell, 'priceDec': priceDec, 'qtyDec': qtyDec})
 
 
-def init_order_flag(asset, isLong):
+def get_decimals(asset):
     parameter = TinyDB('data/order_param.json')
     query = Query()
     result = parameter.search(query.asset == asset)
-    if result[-1]['buy'] == -1:
-        buy = 0 if isLong else 1
-        sell = 1 if isLong else 0
-        parameter.update({'buy': buy, 'sell': sell}, query.asset == asset)
+    return result[0]['priceDec'], result[0]['qtyDec']
 
 
 def get_order_flag(asset):
@@ -61,3 +63,14 @@ def order_log(instance_id, orderId, asset, side, quantity, price, stop_price):
         'price': price,
         'stop_price': stop_price
     })
+
+
+def initializer(pair_list):
+    has_long = []
+    init_data(asset='BUSDUSDT', isLong=None)
+    for coin in pair_list:
+        isLong = common.position_control(asset=coin)
+        init_data(asset=coin, isLong=isLong)
+        if isLong:
+            has_long.append(coin)
+    return has_long

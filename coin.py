@@ -28,7 +28,7 @@ class Coin:
     def __init__(self, asset):
         self.pair = asset
         self.is_long = database.get_islong(asset=self.pair)
-        self.priceDec, self.qtyDec = common.decimal_place(asset=self.pair)
+        self.priceDec, self.qtyDec = database.get_decimals(asset=self.pair)
         self.candles = common.price_action(symbol=self.pair, interval=PRICE_INTERVAL)
         self.atr = atr(klines=self.candles)
         self.candles = array([float(x[4]) for x in self.candles])
