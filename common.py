@@ -113,7 +113,7 @@ def usd_alloc(asset_list):
     divider = 0
     for x in asset_list:
         has_asset = database.get_islong(x)
-        has_order = open_order_control(asset=x, order_side=Client.SIDE_BUY)
+        has_order = database.get_hasBuyOrder(asset=x)
         if not has_asset and not has_order:
             divider += 1
     return truncate(wallet(BUSD) / divider, priceDec) if divider > 0 else truncate(wallet(BUSD), priceDec)

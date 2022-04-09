@@ -37,6 +37,6 @@ class Coin:
         self.lastPrice = self.candles[-1]
         self.prevPrice = self.candles[-2]
         self.buyFlag, self.sellFlag = database.get_order_flag(asset=self.pair)
-        self.hasLongOrder = common.open_order_control(asset=self.pair, order_side=Client.SIDE_BUY)
-        self.hasShortOrder = common.open_order_control(asset=self.pair, order_side=Client.SIDE_SELL)
+        self.hasLongOrder = database.get_hasBuyOrder(asset=self.pair)
+        self.hasShortOrder = database.get_hasSellOrder(asset=self.pair)
         del self.candles

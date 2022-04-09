@@ -9,11 +9,43 @@ def init_data(asset, isLong):
     query = Query()
     result = parameter.search(query.asset == asset)
     priceDec, qtyDec = common.decimal_place(asset=asset)
-    buy = 0 if isLong else 1
-    sell = 1 if isLong else 0
     if len(result) == 0:
         parameter.insert(
-            {'asset': asset, 'isLong': isLong, 'buy': buy, 'sell': sell, 'priceDec': priceDec, 'qtyDec': qtyDec})
+            {'asset': asset,
+             'isLong': isLong,
+             'buy': 1,
+             'sell': 1,
+             'priceDec': priceDec,
+             'qtyDec': qtyDec,
+             'hasBuyOrder': common.open_order_control(asset=asset, order_side='BUY'),
+             'hasSellOrder': common.open_order_control(asset=asset, order_side='SELL')
+             })
+
+
+def get_hasBuyOrder(asset):
+    parameter = TinyDB('data/order_param.json')
+    query = Query()
+    result = parameter.search(query.asset == asset)
+    return result[0]['hasBuyOrder']
+
+
+def get_hasSellOrder(asset):
+    parameter = TinyDB('data/order_param.json')
+    query = Query()
+    result = parameter.search(query.asset == asset)
+    return result[0]['hasSellOrder']
+
+
+def set_hasBuyOrder(asset, hasBuyOrder):
+    parameter = TinyDB('data/order_param.json')
+    query = Query()
+    parameter.update({'hasBuyOrder': hasBuyOrder}, query.asset == asset)
+
+
+def set_hasSellOrder(asset, hasSellOrder):
+    parameter = TinyDB('data/order_param.json')
+    query = Query()
+    parameter.update({'hasSellOrder': hasSellOrder}, query.asset == asset)
 
 
 def get_decimals(asset):
