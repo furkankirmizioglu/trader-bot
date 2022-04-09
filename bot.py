@@ -7,7 +7,7 @@ import time
 from datetime import datetime
 from binance.client import Client
 import common
-from database import initializer, set_islong, set_order_flag
+import database
 from coin import Coin
 from orders import oco_order
 
@@ -28,6 +28,7 @@ def trader(asset):
         if coin.hasLongOrder:
             if coin.prevPrice < coin.mavilimw and coin.sellFlag == 1:
                 common.cancel_order(asset=coin.pair, order_side=Client.SIDE_BUY)
+                database.set_hasBuyOrder(asset=coin.pair, hasBuyOrder=False)
             else:
                 pass
 
@@ -48,7 +49,6 @@ def trader(asset):
                 stop = common.truncate(coin.prevPrice + (coin.atr * 98 / 100), coin.priceDec)
                 # Previous price + (ATR / 2) for stop limit.
                 stop_limit = common.truncate(coin.prevPrice + coin.atr, coin.priceDec)
-
             else:
                 # Mavilim price + (ATR * 98 / 100) for stop trigger.
                 stop = common.truncate(coin.mavilimw + (coin.atr * 98 / 100), coin.priceDec)
@@ -65,6 +65,7 @@ def trader(asset):
                       oco_price=limit,
                       stop=stop,
                       stop_limit=stop_limit)
+            database.set_hasBuyOrder(asset=coin.pair, hasBuyOrder=True)
             logging.info(common.PROCESS_TIME_LOG.format(common.truncate((time.time() - start), 3)))
 
         # If Z-SCORE is less than -1 and last price is less than bottom level, submit a buy order.
@@ -85,7 +86,8 @@ def trader(asset):
                       oco_price=limit,
                       stop=stop,
                       stop_limit=stop_limit)
-            set_order_flag(asset=coin.pair, side=Client.SIDE_SELL, flag=0)
+            database.set_hasBuyOrder(asset=coin.pair, hasBuyOrder=True)
+            database.set_order_flag(asset=coin.pair, side=Client.SIDE_SELL, flag=0)
             logging.info(common.PROCESS_TIME_LOG.format(common.truncate((time.time() - start), 3)))
 
     # SELL CONDITIONS.
@@ -96,6 +98,7 @@ def trader(asset):
         if coin.hasShortOrder:
             if coin.prevPrice > coin.mavilimw and coin.buyFlag == 1:
                 common.cancel_order(asset=coin.pair, order_side=Client.SIDE_SELL)
+                database.set_hasSellOrder(asset=coin.pair, hasSellOrder=False)
             else:
                 pass
 
@@ -114,11 +117,12 @@ def trader(asset):
             else:
                 # Mavilim price - (ATR * 98 / 100) for stop trigger.
                 stop = common.truncate(coin.mavilimw - (coin.atr * 98 / 100), coin.priceDec)
-                # Mavilim price - (ATR / 2) for stop limit.
+                # Mavilim price - ATR for stop limit.
                 stop_limit = common.truncate(coin.mavilimw - coin.atr, coin.priceDec)
 
             # Coin amount information is getting from spot wallet.
             quantity = common.wallet(asset=coin.pair)
+
             # Submit sell order to Binance. Send tweet, write log to ORDER_LOG table and terminal.
             oco_order(pair=coin.pair,
                       side=Client.SIDE_SELL,
@@ -126,6 +130,7 @@ def trader(asset):
                       oco_price=limit,
                       stop=stop,
                       stop_limit=stop_limit)
+            database.set_hasSellOrder(asset=coin.pair, hasSellOrder=True)
             logging.info(common.PROCESS_TIME_LOG.format(common.truncate((time.time() - start), 3)))
 
         # IF Z-SCORE is greater than 1.5 and last price is greater than top level, then submit a top sell order.
@@ -148,21 +153,22 @@ def trader(asset):
                       oco_price=limit,
                       stop=stop,
                       stop_limit=stop_limit)
-            set_order_flag(asset=coin.pair, side=Client.SIDE_BUY, flag=0)
+            database.set_hasSellOrder(asset=coin.pair, hasSellOrder=True)
+            database.set_order_flag(asset=coin.pair, side=Client.SIDE_BUY, flag=0)
             logging.info(common.PROCESS_TIME_LOG.format(common.truncate((time.time() - start), 3)))
 
     # If previous close price crosses up mavilim and sell flag is 0 then set sell flag to 1.
     if coin.prevPrice > coin.mavilimw and coin.sellFlag == 0:
-        set_order_flag(asset=coin.pair, side=Client.SIDE_SELL, flag=1)
+        database.set_order_flag(asset=coin.pair, side=Client.SIDE_SELL, flag=1)
     # If previous close price crosses down mavilim and buy flag is 0 then buy flag to 1
     elif coin.prevPrice < coin.mavilimw and coin.buyFlag == 0:
-        set_order_flag(asset=coin.pair, side=Client.SIDE_BUY, flag=1)
+        database.set_order_flag(asset=coin.pair, side=Client.SIDE_BUY, flag=1)
 
 
 # MAIN AND INFINITE LOOP FUNCTION.
 def bot():
     global coin_list, USDT_AMOUNT
-    hasPosList = initializer(pair_list=coin_list)
+    hasPosList = database.initializer(pair_list=coin_list)
     if len(hasPosList) > 0:
         logging.info(common.HAVE_ASSET_LOG.format(', '.join(hasPosList)))
     del hasPosList
@@ -170,13 +176,16 @@ def bot():
         while 1:
             for coin in coin_list:
                 try:
+                    database.set_islong(asset=coin, isLong=common.position_control(asset=coin))
+                    database.set_hasBuyOrder(asset=coin,
+                                             hasBuyOrder=common.open_order_control(asset=coin, order_side='BUY'))
+                    database.set_hasSellOrder(asset=coin,
+                                              hasSellOrder=common.open_order_control(asset=coin, order_side='SELL'))
                     USDT_AMOUNT = common.usd_alloc(coin_list)
-                    set_islong(asset=coin, isLong=common.position_control(asset=coin))
                     trader(asset=coin)
-                    time.sleep(15)
+                    time.sleep(5)
                 except Exception as e:
-                    now = datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
-                    print(now + e)
+                    print(datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S") + e)
                 else:
                     pass
 
