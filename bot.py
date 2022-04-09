@@ -26,7 +26,7 @@ def trader(asset):
 
         # If already have a buy order but trend signal has broken, then cancel the order. Else just pass.
         if coin.hasLongOrder:
-            if coin.prevPrice < coin.mavilimw:
+            if coin.prevPrice < coin.mavilimw and coin.sellFlag == 1:
                 common.cancel_order(asset=coin.pair, order_side=Client.SIDE_BUY)
             else:
                 pass
@@ -95,7 +95,7 @@ def trader(asset):
 
         # If there is already a sell order but sell signal has broken, then cancel the sell order.
         if coin.hasShortOrder:
-            if coin.prevPrice > coin.mavilimw:
+            if coin.prevPrice > coin.mavilimw and coin.buyFlag == 1:
                 common.cancel_order(asset=coin.pair, order_side=Client.SIDE_SELL)
             else:
                 pass
