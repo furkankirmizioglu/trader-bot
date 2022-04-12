@@ -185,7 +185,7 @@ def bot():
                     trader(asset=coin)
                     time.sleep(5)
                 except Exception as e:
-                    print(datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S") + e)
+                    print(e)
                 else:
                     pass
 
