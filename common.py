@@ -77,10 +77,15 @@ def wallet(asset):
         return float(data['free'])
 
 
-# Checks if user has purchased the asset.
-def position_control(asset):
+def get_min_qty(asset):
     info = client.get_symbol_info(asset)
     min_qty = float(info['filters'][2]['minQty'])
+    return min_qty
+
+
+# Checks if user has purchased the asset.
+def position_control(asset):
+    min_qty = database.get_min_qty(asset=asset)
     return True if wallet(asset=asset) > min_qty else False
 
 

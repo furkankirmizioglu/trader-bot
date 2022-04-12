@@ -4,19 +4,21 @@ from tinydb import TinyDB, Query
 import common
 
 
-def init_data(asset, isLong):
+def init_data(asset):
     parameter = TinyDB('data/order_param.json')
     query = Query()
     result = parameter.search(query.asset == asset)
     if len(result) == 0:
         priceDec, qtyDec = common.decimal_place(asset=asset)
+        minQty = common.get_min_qty(asset=asset)
         parameter.insert(
             {'asset': asset,
-             'isLong': isLong,
+             'isLong': None,
              'buy': 1,
              'sell': 1,
              'priceDec': priceDec,
              'qtyDec': qtyDec,
+             'minQty': minQty,
              'hasBuyOrder': common.open_order_control(asset=asset, order_side='BUY'),
              'hasSellOrder': common.open_order_control(asset=asset, order_side='SELL')
              })
@@ -31,6 +33,13 @@ def get_hasBuyOrder(asset):
     query = Query()
     result = parameter.search(query.asset == asset)
     return result[0]['hasBuyOrder']
+
+
+def get_min_qty(asset):
+    parameter = TinyDB('data/order_param.json')
+    query = Query()
+    result = parameter.search(query.asset == asset)
+    return result[0]['minQty']
 
 
 def get_hasSellOrder(asset):
@@ -103,10 +112,13 @@ def order_log(instance_id, orderId, asset, side, quantity, price, stop_price):
 
 def initializer(pair_list):
     has_long = []
-    init_data(asset='BUSDUSDT', isLong=None)
+    init_data(asset='BUSDUSDT')
     for coin in pair_list:
+        init_data(asset=coin)
         isLong = common.position_control(asset=coin)
-        init_data(asset=coin, isLong=isLong)
         if isLong:
+            set_islong(asset=coin, isLong=True)
             has_long.append(coin)
+        else:
+            set_islong(asset=coin, isLong=False)
     return has_long
