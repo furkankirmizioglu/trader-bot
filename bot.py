@@ -97,7 +97,7 @@ def trader(asset):
 
             # Previous close price + ATR value for limit sell level.
             limit = common.truncate(coin.prevPrice + coin.atr, coin.priceDec)
-             # Previous close price - (ATR * 98 / 100) for stop trigger.
+            # Previous close price - (ATR * 98 / 100) for stop trigger.
             stop = common.truncate(coin.prevPrice - (coin.atr * 98 / 100), coin.priceDec)
             # Previous close price - ATR for stop limit.
             stop_limit = common.truncate(coin.prevPrice - coin.atr, coin.priceDec)
