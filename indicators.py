@@ -52,7 +52,7 @@ def mavilimw_bullandbear(close, truncate):
     for x in gap:
         bull.append(x) if x >= 0 else bear.append(x)  # Diverging gap values according to be positive or negative.
 
-    last_mavilimw = common.truncate(mavilimw_array[-2], decimals=truncate)  # Calculating last MAVILIMW value.
+    last_mavilimw = common.truncate(mavilimw_array[-1], decimals=truncate)  # Calculating last MAVILIMW value.
     # Calculating standard deviation of bullish gaps.
     stddev_bull = common.truncate(last_mavilimw + 2 * numpy.std(bull), decimals=truncate)
     # Calculating standard deviation of bearish gaps.

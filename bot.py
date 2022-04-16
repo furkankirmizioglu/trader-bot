@@ -42,19 +42,9 @@ def trader(asset):
 
             # Previous close price - ATR for limit buy level.
             limit = common.truncate(coin.prevPrice - coin.atr, coin.priceDec)
-
-            # If previous close price is greater than mavilim + atr, then enter this condition.
-            if coin.prevPrice > (coin.mavilimw + coin.atr):
-                # Previous price + (ATR * 49 / 100) for stop trigger.
-                stop = common.truncate(coin.prevPrice + (coin.atr * 98 / 100), coin.priceDec)
-                # Previous price + (ATR / 2) for stop limit.
-                stop_limit = common.truncate(coin.prevPrice + coin.atr, coin.priceDec)
-            else:
-                # Mavilim price + (ATR * 98 / 100) for stop trigger.
-                stop = common.truncate(coin.mavilimw + (coin.atr * 98 / 100), coin.priceDec)
-                # Mavilim price + ATR for stop limit.
-                stop_limit = common.truncate(coin.mavilimw + coin.atr, coin.priceDec)
-
+            stop = common.truncate(coin.prevPrice + (coin.atr * 98 / 100), coin.priceDec)
+            # Previous price + (ATR / 2) for stop limit.
+            stop_limit = common.truncate(coin.prevPrice + coin.atr, coin.priceDec)
             # The purchase amount is calculated by USDT amount / stop limit price.
             quantity = common.truncate(USDT_AMOUNT / stop_limit, coin.qtyDec)
 
@@ -107,19 +97,10 @@ def trader(asset):
 
             # Previous close price + ATR value for limit sell level.
             limit = common.truncate(coin.prevPrice + coin.atr, coin.priceDec)
-
-            # If previous close price is less than mavilim + ATR, then enter this condition.
-            if coin.prevPrice < (coin.mavilimw - coin.atr):
-                # Previous close price - (ATR * 98 / 100) for stop trigger.
-                stop = common.truncate(coin.prevPrice - (coin.atr * 98 / 100), coin.priceDec)
-                # Previous close price - ATR for stop limit.
-                stop_limit = common.truncate(coin.prevPrice - coin.atr, coin.priceDec)
-            else:
-                # Mavilim price - (ATR * 98 / 100) for stop trigger.
-                stop = common.truncate(coin.mavilimw - (coin.atr * 98 / 100), coin.priceDec)
-                # Mavilim price - ATR for stop limit.
-                stop_limit = common.truncate(coin.mavilimw - coin.atr, coin.priceDec)
-
+             # Previous close price - (ATR * 98 / 100) for stop trigger.
+            stop = common.truncate(coin.prevPrice - (coin.atr * 98 / 100), coin.priceDec)
+            # Previous close price - ATR for stop limit.
+            stop_limit = common.truncate(coin.prevPrice - coin.atr, coin.priceDec)
             # Coin amount information is getting from spot wallet.
             quantity = common.wallet(asset=coin.pair)
 
