@@ -4,7 +4,7 @@ from tinydb import TinyDB, Query
 import common as common
 
 
-def init_data(asset):
+def createDatabase(asset):
     parameter = TinyDB('data/futures_order_param.json')
     query = Query()
     result = parameter.search(query.asset == asset)
@@ -25,98 +25,98 @@ def init_data(asset):
         pass
 
 
-def get_long_hold(asset):
+def getLongHold(asset):
     parameter = TinyDB('data/futures_order_param.json')
     query = Query()
     response = parameter.search(query.asset == asset)
     return response[0]['longHold']
 
 
-def set_long_hold(asset, hold):
+def setLongHold(asset, hold):
     parameter = TinyDB('data/futures_order_param.json')
     query = Query()
     parameter.update({'longHold': hold}, query.asset == asset)
 
 
-def get_short_hold(asset):
+def getShortHold(asset):
     parameter = TinyDB('data/futures_order_param.json')
     query = Query()
     response = parameter.search(query.asset == asset)
     return response[0]['shortHold']
 
 
-def set_short_hold(asset, hold):
+def setShortHold(asset, hold):
     parameter = TinyDB('data/futures_order_param.json')
     query = Query()
     parameter.update({'shortHold': hold}, query.asset == asset)
 
 
-def get_long(asset):
+def getLong(asset):
     parameter = TinyDB('data/futures_order_param.json')
     query = Query()
     response = parameter.search(query.asset == asset)
     return response[0]['long']
 
 
-def set_long(asset, isLong):
+def setLong(asset, isLong):
     parameter = TinyDB('data/futures_order_param.json')
     query = Query()
     parameter.update({'long': isLong}, query.asset == asset)
 
 
-def get_short(asset):
+def getShort(asset):
     parameter = TinyDB('data/futures_order_param.json')
     query = Query()
     response = parameter.search(query.asset == asset)
     return response[0]['short']
 
 
-def set_short(asset, isShort):
+def setShort(asset, isShort):
     parameter = TinyDB('data/futures_order_param.json')
     query = Query()
     parameter.update({'short': isShort}, query.asset == asset)
 
 
-def get_hasLongOrder(asset):
+def getHasLongOrder(asset):
     parameter = TinyDB('data/futures_order_param.json')
     query = Query()
     response = parameter.search(query.asset == asset)
     return response[0]['hasLongOrder']
 
 
-def set_hasLongOrder(asset, hasLongOrder):
+def setHasLongOrder(asset, hasLongOrder):
     parameter = TinyDB('data/futures_order_param.json')
     query = Query()
     parameter.update({'hasLongOrder': hasLongOrder}, query.asset == asset)
 
 
-def get_hasShortOrder(asset):
+def getHasShortOrder(asset):
     parameter = TinyDB('data/futures_order_param.json')
     query = Query()
     response = parameter.search(query.asset == asset)
     return response[0]['hasShortOrder']
 
 
-def set_hasShortOrder(asset, hasShortOrder):
+def setHasShortOrder(asset, hasShortOrder):
     parameter = TinyDB('data/futures_order_param.json')
     query = Query()
     parameter.update({'hasShortOrder': hasShortOrder}, query.asset == asset)
 
 
-def get_quantity(asset):
+def getQuantity(asset):
     parameter = TinyDB('data/futures_order_param.json')
     query = Query()
     response = parameter.search(query.asset == asset)
     return response[0]['quantity']
 
 
-def set_quantity(asset, quantity):
+def setQuantity(asset, quantity):
     parameter = TinyDB('data/futures_order_param.json')
     query = Query()
     parameter.update({'quantity': quantity}, query.asset == asset)
 
 
-def get_precision(asset):
+def getPrecision(asset):
     parameter = TinyDB('data/futures_order_param.json')
     query = Query()
     response = parameter.search(query.asset == asset)

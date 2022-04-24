@@ -1,0 +1,27 @@
+import configparser
+import os
+
+USDT = 'USDT'
+OPEN_ORDER_LOG = "{0} - You already have a {2} order of {1}."
+LONG_POSITION_LOG = "You already carrying long position on these assets: {0}"
+SHORT_POSITION_LOG = "You already carrying short position on these assets: {0}"
+START_LOG = "{0} - TraderBot Futures has started. Running for {1}"
+CANCEL_ORDER_LOG = "{0} - Latest {2} order of {1} has been cancelled."
+PROCESS_TIME_LOG = "This order has been processed in {} seconds."
+
+LEVERAGE = 5
+
+SUBMIT_ORDER_LOG = "{0} - {3} order for {2} amount of {1} has been submitted at {4} price."
+FUTURE_LIMIT_ORDER_TWEET = "{0} - {1} order for {2} has been submitted.\nLimit : {3}"
+FUTURE_MARKET_ORDER_TWEET = "{0} - {1} order for {2} has been submitted at market price.\nMarket : {3}"
+
+config = configparser.ConfigParser()
+dirName = os.path.dirname(__file__) + "/BinanceBotFutures.ini"
+config.read(dirName)
+
+BINANCE_FUTURES_API_KEY = config.get('BinanceFutures', 'apikey')
+BINANCE_FUTURES_API_SECRET_KEY = config.get('BinanceFutures', 'secretkey')
+TWITTER_API_KEY = config.get('TwitterAPI', 'consumer_key')
+TWITTER_API_SECRET_KEY = config.get('TwitterAPI', 'consumer_secret_key')
+TWITTER_ACCESS_TOKEN = config.get('TwitterAPI', 'access_token')
+TWITTER_ACCESS_SECRET_TOKEN = config.get('TwitterAPI', 'access_secret_token')

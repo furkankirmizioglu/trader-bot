@@ -1,5 +1,5 @@
 import talib
-import common as common
+import common
 import numpy
 
 ATR_PERIOD = 14

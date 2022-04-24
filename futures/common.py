@@ -1,31 +1,13 @@
-import configparser
 import logging
 import math
-import os
 from datetime import datetime, timedelta
 import tweepy
 from binance.client import Client, BinanceAPIException
 import database as database
+import constants
 
-USDT = 'USDT'
-OPEN_ORDER_LOG = "{0} - You already have a {2} order of {1}."
-LONG_POSITION_LOG = "You already carrying long position on these assets: {0}"
-SHORT_POSITION_LOG = "You already carrying short position on these assets: {0}"
-MIN_USD = 12
-MIN_AMOUNT_EXCEPTION_LOG = "{0} - Buy amount cannot be less than {2} USDT! {1} buy order is invalid and won't submit."
-START_LOG = "{0} - TraderBot Futures has started. Running for {1}"
-CANCEL_ORDER_LOG = "{0} - Latest {2} order of {1} has been cancelled."
-PROCESS_TIME_LOG = "This order has been processed in {} seconds."
-UP = 'UP'
-DOWN = 'DOWN'
-config = configparser.ConfigParser()
-dirName = os.path.dirname(__file__) + "/BinanceBotFutures.ini"
-config.read(dirName)
-API_KEY = config.get('BinanceFutures', 'apikey')
-API_SECRET_KEY = config.get('BinanceFutures', 'secretkey')
-client = Client(api_key=API_KEY, api_secret=API_SECRET_KEY)
+client = Client(api_key=constants.BINANCE_FUTURES_API_KEY, api_secret=constants.BINANCE_FUTURES_API_SECRET_KEY)
 logging.basicConfig(level=logging.INFO)
-LEVERAGE = 5
 
 
 # Truncates the given value.
@@ -47,8 +29,15 @@ def decimal_place(asset):
     info = info['symbols']
     for x in info:
         if x['pair'] == asset:
-            priceDec = x['pricePrecision']
-            qtyDec = x['quantityPrecision']
+            minPrice = str(x['filters'][0]['tickSize'])
+            minQty = str(x['filters'][1]['minQty'])
+            start = '0.'
+            end = '1'
+            priceDec = len(minPrice[minPrice.find(start) + len(start):minPrice.rfind(end)]) + 1
+            if minQty.startswith(end):
+                qtyDec = 0
+            else:
+                qtyDec = len(minQty[minQty.find(start) + len(start):minQty.rfind(end)]) + 1
             return priceDec, qtyDec
 
 
@@ -56,11 +45,11 @@ def decimal_place(asset):
 def price_action(symbol, interval):
     first_set = client.futures_klines(symbol=symbol, interval=interval, limit=1000)
     timestamp = first_set[0][0]
-    timestampsec = datetime.fromtimestamp(timestamp / 1e3) - timedelta(hours=1)
-    timestampsec = int(datetime.timestamp(timestampsec))
-    exp = len(str(timestamp)) - len(str(timestampsec))
-    timestampsec *= pow(10, exp)
-    second_set = client.futures_klines(symbol=symbol, interval=interval, limit=1000, endTime=timestampsec)
+    second_timestamp = datetime.fromtimestamp(timestamp / 1e3) - timedelta(hours=1)
+    second_timestamp = int(datetime.timestamp(second_timestamp))
+    exp = len(str(timestamp)) - len(str(second_timestamp))
+    second_timestamp *= pow(10, exp)
+    second_set = client.futures_klines(symbol=symbol, interval=interval, limit=1000, endTime=second_timestamp)
     joined_list = [*second_set, *first_set]
     return joined_list
 
@@ -82,38 +71,45 @@ def initializer(pair_list):
     has_long = []
     has_short = []
     for coin in pair_list:
+
         try:
             client.futures_change_margin_type(symbol=coin, marginType='ISOLATED')
         except BinanceAPIException as e:
             logging.info(e.message)
             pass
 
-        client.futures_change_leverage(symbol=coin, leverage=LEVERAGE)
+        try:
+            client.futures_change_position_mode(dualSidePosition='false')
+        except BinanceAPIException as e:
+            logging.info(e.message)
+            pass
 
-        database.init_data(asset=coin)
+        client.futures_change_leverage(symbol=coin, leverage=constants.LEVERAGE)
+
+        database.createDatabase(asset=coin)
         longPosition, shortPosition, quantity = check_position(asset=coin)
 
         if longPosition:
-            database.set_long(asset=coin, isLong=True)
-            database.set_quantity(asset=coin, quantity=quantity)
+            database.setLong(asset=coin, isLong=True)
+            database.setQuantity(asset=coin, quantity=quantity)
             has_long.append(coin)
         elif not longPosition:
-            database.set_long(asset=coin, isLong=False)
-            database.set_quantity(asset=coin, quantity=0)
+            database.setLong(asset=coin, isLong=False)
+            database.setQuantity(asset=coin, quantity=0)
 
         if shortPosition:
-            database.set_short(asset=coin, isShort=True)
-            database.set_quantity(asset=coin, quantity=quantity)
+            database.setShort(asset=coin, isShort=True)
+            database.setQuantity(asset=coin, quantity=quantity)
             has_short.append(coin)
         elif not shortPosition:
-            database.set_quantity(asset=coin, quantity=0)
-            database.set_short(asset=coin, isShort=False)
+            database.setQuantity(asset=coin, quantity=0)
+            database.setShort(asset=coin, isShort=False)
 
         hasLongOrder = open_order_control(asset=coin, order_side='BUY')
-        database.set_hasLongOrder(asset=coin, hasLongOrder=hasLongOrder)
+        database.setHasLongOrder(asset=coin, hasLongOrder=hasLongOrder)
 
         hasShortOrder = open_order_control(asset=coin, order_side='SELL')
-        database.set_hasShortOrder(asset=coin, hasShortOrder=hasShortOrder)
+        database.setHasShortOrder(asset=coin, hasShortOrder=hasShortOrder)
 
         return has_long, has_short
 
@@ -141,19 +137,18 @@ def wallet(asset):
 def usd_alloc(asset_list):
     divider = 0
     for x in asset_list:
-        isLong = database.get_long(asset=x)
-        isShort = database.get_short(asset=x)
-        has_long_order = database.get_hasLongOrder(asset=x)
-        has_short_order = database.get_hasShortOrder(asset=x)
+        isLong = database.getLong(asset=x)
+        isShort = database.getShort(asset=x)
+        has_long_order = database.getHasLongOrder(asset=x)
+        has_short_order = database.getHasShortOrder(asset=x)
         if not isLong and not isShort and not has_long_order and not has_short_order:
-            divider += 1
-    return wallet(asset=USDT) / divider if divider > 0 else wallet(asset=USDT)
+            divider += 2
+    return wallet(asset=constants.USDT) / divider if divider > 0 else wallet(asset=constants.USDT)
 
 
 # Sends tweet.
 def tweet(status):
-    auth = tweepy.OAuthHandler(config.get('TwitterAPI', 'consumer_key'),
-                               config.get('TwitterAPI', 'consumer_secret_key'))
-    auth.set_access_token(config.get('TwitterAPI', 'access_token'), config.get('TwitterAPI', 'access_secret_token'))
+    auth = tweepy.OAuthHandler(constants.TWITTER_API_KEY, constants.TWITTER_API_SECRET_KEY)
+    auth.set_access_token(constants.TWITTER_ACCESS_TOKEN, constants.TWITTER_ACCESS_SECRET_TOKEN)
     twitter = tweepy.API(auth)
     twitter.update_status(status)
