@@ -1,7 +1,6 @@
 import configparser
 import logging
 import os
-from datetime import datetime
 from binance.client import Client
 from binance.exceptions import BinanceAPIException, BinanceOrderException
 import constants
