@@ -25,7 +25,7 @@ def limitOrder(now, pair, side, quantity, limit):
                                                type=Client.FUTURE_ORDER_TYPE_LIMIT,
                                                timeInForce=Client.TIME_IN_FORCE_GTC)
         orderId = response['orderId']
-        logging.info(constants.SUBMIT_ORDER_LOG.format(now, pair, quantity, side.upper(), limit))
+        logging.info(constants.SUBMIT_ORDER_LOG.format(now, pair, side.upper(), limit))
         tweet(constants.FUTURE_LIMIT_ORDER_TWEET.format(now, side.capitalize(), pair, limit))
         order_log(instance_id=now, orderId=orderId, asset=pair, side=side, quantity=quantity, price=limit)
 
@@ -43,7 +43,7 @@ def marketOrder(now, pair, side, quantity, logPrice):
                                                type=Client.FUTURE_ORDER_TYPE_MARKET,
                                                timeInForce=Client.TIME_IN_FORCE_GTC)
         orderId = response['orderId']
-        logging.info(constants.SUBMIT_ORDER_LOG.format(now, pair, quantity, side.upper(), logPrice))
+        logging.info(constants.SUBMIT_ORDER_LOG.format(now, pair, side.upper(), logPrice))
         tweet(constants.FUTURE_MARKET_ORDER_TWEET.format(now, side.capitalize(), pair, logPrice))
         order_log(instance_id=now, orderId=orderId, asset=pair, side=side, quantity=quantity, price=logPrice)
 
@@ -61,7 +61,7 @@ def stopMarketOrder(now, pair, side, stopPrice):
                                                closePosition='true',
                                                stopPrice=stopPrice)
         orderId = response['orderId']
-        logging.info(constants.SUBMIT_ORDER_LOG.format(now, pair, 0, side.upper(), stopPrice))
+        logging.info(constants.SUBMIT_ORDER_LOG.format(now, pair, side.upper(), stopPrice))
         order_log(instance_id=now, orderId=orderId, asset=pair, side=side, quantity=0, price=stopPrice)
     except BinanceAPIException as e:
         logging.error(e)
@@ -77,7 +77,7 @@ def takeProfitMarketOrder(now, pair, side, stopPrice):
                                                closePosition='true',
                                                stopPrice=stopPrice)
         orderId = response['orderId']
-        logging.info(constants.SUBMIT_ORDER_LOG.format(now, pair, 0, side.upper(), stopPrice))
+        logging.info(constants.SUBMIT_ORDER_LOG.format(now, pair, side.upper(), stopPrice))
         order_log(instance_id=now, orderId=orderId, asset=pair, side=side, quantity=0, price=stopPrice)
     except BinanceAPIException as e:
         logging.error(e)

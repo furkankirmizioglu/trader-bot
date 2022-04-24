@@ -11,7 +11,7 @@ PROCESS_TIME_LOG = "This order has processed in {} seconds."
 LEVERAGE = 5
 USDT = 'USDT'
 
-SUBMIT_ORDER_LOG = "{0} - Futures {3} order for {2} amount of {1} has been submitted at {4} price."
+SUBMIT_ORDER_LOG = "{0} - Futures {2} order for {1} has been submitted at {3} price."
 FUTURE_LIMIT_ORDER_TWEET = "{0} - Futures {1} order for {2} has been submitted.\nTake-Profit : {4}\nStop-Limit : {3}"
 FUTURE_MARKET_ORDER_TWEET = "{0} - Futures {1} order for {2} has been submitted at market price.\nMarket : {3}"
 
