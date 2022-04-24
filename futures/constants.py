@@ -1,19 +1,19 @@
 import configparser
 import os
 
-USDT = 'USDT'
-OPEN_ORDER_LOG = "{0} - You already have a {2} order of {1}."
+
+START_LOG = "{0} - TraderBot Futures has started. Running for {1}"
 LONG_POSITION_LOG = "You already carrying long position on these assets: {0}"
 SHORT_POSITION_LOG = "You already carrying short position on these assets: {0}"
-START_LOG = "{0} - TraderBot Futures has started. Running for {1}"
-CANCEL_ORDER_LOG = "{0} - Latest {2} order of {1} has been cancelled."
-PROCESS_TIME_LOG = "This order has been processed in {} seconds."
+CANCEL_ORDER_LOG = "{0} - Latest futures {2} order of {1} has cancelled."
+PROCESS_TIME_LOG = "This order has processed in {} seconds."
 
 LEVERAGE = 5
+USDT = 'USDT'
 
-SUBMIT_ORDER_LOG = "{0} - {3} order for {2} amount of {1} has been submitted at {4} price."
-FUTURE_LIMIT_ORDER_TWEET = "{0} - {1} order for {2} has been submitted.\nLimit : {3}"
-FUTURE_MARKET_ORDER_TWEET = "{0} - {1} order for {2} has been submitted at market price.\nMarket : {3}"
+SUBMIT_ORDER_LOG = "{0} - Futures {3} order for {2} amount of {1} has been submitted at {4} price."
+FUTURE_LIMIT_ORDER_TWEET = "{0} - Futures {1} order for {2} has been submitted.\nTake-Profit : {4}\nStop-Limit : {3}"
+FUTURE_MARKET_ORDER_TWEET = "{0} - Futures {1} order for {2} has been submitted at market price.\nMarket : {3}"
 
 config = configparser.ConfigParser()
 dirName = os.path.dirname(__file__) + "/BinanceBotFutures.ini"

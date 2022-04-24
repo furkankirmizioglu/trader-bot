@@ -29,14 +29,18 @@ def trader(coin):
         else:
             if coin.short:
                 # Before submit a long position order, close short position.
+                now = datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
                 stopMarketPrice = common.truncate(coin.prevPrice + coin.atr, coin.priceDec)
                 takeProfitMarketPrice = common.truncate(coin.prevPrice - coin.atr, coin.priceDec)
-                stopMarketOrder(pair=coin.pair, side=Client.SIDE_BUY, stopPrice=stopMarketPrice)
-                takeProfitMarketOrder(pair=coin.pair, side=Client.SIDE_BUY, stopPrice=takeProfitMarketPrice)
+                stopMarketOrder(now=now, pair=coin.pair, side=Client.SIDE_BUY, stopPrice=stopMarketPrice)
+                takeProfitMarketOrder(now=now, pair=coin.pair, side=Client.SIDE_BUY, stopPrice=takeProfitMarketPrice)
+                common.tweet(constants.FUTURE_LIMIT_ORDER_TWEET.format(now, 'LONG', coin.pair, stopMarketPrice,
+                                                                       takeProfitMarketPrice))
                 database.setHasLongOrder(asset=coin.pair, hasLongOrder=True)
             else:
+                now = datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
                 quantity = common.truncate(AMOUNT_V3 * constants.LEVERAGE / coin.lastPrice, coin.qtyDec)
-                marketOrder(pair=coin.pair, side=Client.SIDE_BUY, quantity=quantity, logPrice=coin.lastPrice)
+                marketOrder(now=now, pair=coin.pair, side=Client.SIDE_BUY, quantity=quantity, logPrice=coin.lastPrice)
                 database.setLong(asset=coin.pair, isLong=True)
                 logging.info(constants.PROCESS_TIME_LOG.format(common.truncate((time.time() - start), 3)))
 
@@ -46,14 +50,18 @@ def trader(coin):
         else:
             if coin.short:
                 # Before submit a long position order, close short position.
+                now = datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
                 stopMarketPrice = common.truncate(coin.prevPrice + coin.atr, coin.priceDec)
                 takeProfitMarketPrice = common.truncate(coin.prevPrice - coin.atr, coin.priceDec)
-                stopMarketOrder(pair=coin.pair, side=Client.SIDE_BUY, stopPrice=stopMarketPrice)
-                takeProfitMarketOrder(pair=coin.pair, side=Client.SIDE_BUY, stopPrice=takeProfitMarketPrice)
+                stopMarketOrder(now=now, pair=coin.pair, side=Client.SIDE_BUY, stopPrice=stopMarketPrice)
+                takeProfitMarketOrder(now=now, pair=coin.pair, side=Client.SIDE_BUY, stopPrice=takeProfitMarketPrice)
+                common.tweet(constants.FUTURE_LIMIT_ORDER_TWEET.format(now, 'LONG', coin.pair, stopMarketPrice,
+                                                                       takeProfitMarketPrice))
                 database.setHasLongOrder(asset=coin.pair, hasLongOrder=True)
             else:
+                now = datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
                 quantity = common.truncate(AMOUNT_V3 * constants.LEVERAGE / coin.lastPrice, coin.qtyDec)
-                marketOrder(pair=coin.pair, side=Client.SIDE_BUY, quantity=quantity, logPrice=coin.lastPrice)
+                marketOrder(now=now, pair=coin.pair, side=Client.SIDE_BUY, quantity=quantity, logPrice=coin.lastPrice)
                 database.setLong(asset=coin.pair, isLong=True)
                 database.setShortHold(asset=coin.pair, hold=True)
                 logging.info(constants.PROCESS_TIME_LOG.format(common.truncate((time.time() - start), 3)))
@@ -65,14 +73,18 @@ def trader(coin):
         else:
             if coin.long:
                 # Before submit a short order, close long position immediately.
+                now = datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
                 stopMarketPrice = common.truncate(coin.prevPrice - coin.atr, coin.priceDec)
                 takeProfitMarketPrice = common.truncate(coin.prevPrice + coin.atr, coin.priceDec)
-                stopMarketOrder(pair=coin.pair, side=Client.SIDE_SELL, stopPrice=stopMarketPrice)
-                takeProfitMarketOrder(pair=coin.pair, side=Client.SIDE_SELL, stopPrice=takeProfitMarketPrice)
+                stopMarketOrder(now=now, pair=coin.pair, side=Client.SIDE_SELL, stopPrice=stopMarketPrice)
+                takeProfitMarketOrder(now=now, pair=coin.pair, side=Client.SIDE_SELL, stopPrice=takeProfitMarketPrice)
+                common.tweet(constants.FUTURE_LIMIT_ORDER_TWEET.format(now, 'LONG', coin.pair, stopMarketPrice,
+                                                                       takeProfitMarketPrice))
                 database.setHasShortOrder(asset=coin.pair, hasShortOrder=True)
             else:
+                now = datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
                 quantity = common.truncate(AMOUNT_V3 * constants.LEVERAGE / coin.lastPrice, coin.qtyDec)
-                marketOrder(pair=coin.pair, side=Client.SIDE_SELL, quantity=quantity, logPrice=coin.lastPrice)
+                marketOrder(now=now, pair=coin.pair, side=Client.SIDE_SELL, quantity=quantity, logPrice=coin.lastPrice)
                 database.setShort(asset=coin.pair, isShort=True)
                 logging.info(constants.PROCESS_TIME_LOG.format(common.truncate((time.time() - start), 3)))
 
@@ -82,14 +94,18 @@ def trader(coin):
         else:
             if coin.long:
                 # Before submit a short order, close long position immediately.
+                now = datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
                 stopMarketPrice = common.truncate(coin.prevPrice - coin.atr, coin.priceDec)
                 takeProfitMarketPrice = common.truncate(coin.prevPrice + coin.atr, coin.priceDec)
-                stopMarketOrder(pair=coin.pair, side=Client.SIDE_SELL, stopPrice=stopMarketPrice)
-                takeProfitMarketOrder(pair=coin.pair, side=Client.SIDE_SELL, stopPrice=takeProfitMarketPrice)
+                stopMarketOrder(now=now, pair=coin.pair, side=Client.SIDE_SELL, stopPrice=stopMarketPrice)
+                takeProfitMarketOrder(now=now, pair=coin.pair, side=Client.SIDE_SELL, stopPrice=takeProfitMarketPrice)
+                common.tweet(constants.FUTURE_LIMIT_ORDER_TWEET.format(now, 'LONG', coin.pair, stopMarketPrice,
+                                                                       takeProfitMarketPrice))
                 database.setHasShortOrder(asset=coin.pair, hasShortOrder=True)
             else:
+                now = datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
                 quantity = common.truncate(AMOUNT_V3 * constants.LEVERAGE / coin.lastPrice, coin.qtyDec)
-                marketOrder(pair=coin.pair, side=Client.SIDE_SELL, quantity=quantity, logPrice=coin.lastPrice)
+                marketOrder(now=now, pair=coin.pair, side=Client.SIDE_SELL, quantity=quantity, logPrice=coin.lastPrice)
                 database.setHasShortOrder(asset=coin.pair, hasShortOrder=True)
                 database.setLongHold(asset=coin.pair, hold=True)
                 logging.info(constants.PROCESS_TIME_LOG.format(common.truncate((time.time() - start), 3)))
