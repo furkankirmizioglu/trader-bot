@@ -152,6 +152,6 @@ def bot():
 
 
 start_now = datetime.now().replace(microsecond=0)
-# common.tweet(constants.START_LOG.format(start_now, ", ".join(pairList)))
+common.tweet(constants.START_LOG.format(start_now, ", ".join(pairList)))
 logging.info(constants.START_LOG.format(start_now, ", ".join(pairList)))
 bot()
