@@ -1,15 +1,16 @@
 from binance import Client
 from numpy import array
 from scipy.stats import stats
-import futures_common
-import futures_database
-from futures_indicators import mavilimw_bullandbear, atr
+import common
+import database
+from indicators import mavilimw_bullandbear, atr
 
 PRICE_INTERVAL = Client.KLINE_INTERVAL_1HOUR
 
 
 class Coin:
     pair = ""
+    quantity = 0
     priceDec = 0
     qtyDec = 0
     candles = []
@@ -29,7 +30,8 @@ class Coin:
 
     def __init__(self, asset):
         self.pair = asset
-        self.priceDec, self.qtyDec = futures_common.decimal_place(asset=self.pair)
+        self.quantity = futures_database.get_quantity(asset=self.pair)
+        self.priceDec, self.qtyDec = futures_database.get_precision(asset=self.pair)
         self.long = futures_database.get_long(asset=self.pair)
         self.short = futures_database.get_short(asset=self.pair)
         self.candles = futures_common.price_action(symbol=self.pair, interval=PRICE_INTERVAL)
@@ -41,6 +43,6 @@ class Coin:
         self.prevPrice = self.candles[-2]
         self.longHold = futures_database.get_long_hold(asset=self.pair)
         self.shortHold = futures_database.get_short_hold(asset=self.pair)
-        self.hasLongOrder = futures_common.open_order_control(asset=self.pair, order_side="LONG")
-        self.hasShortOrder = futures_common.open_order_control(asset=self.pair, order_side="SHORT")
+        self.hasLongOrder = futures_database.get_hasLongOrder(asset=self.pair)
+        self.hasShortOrder = futures_database.get_hasShortOrder(asset=self.pair)
         del self.candles

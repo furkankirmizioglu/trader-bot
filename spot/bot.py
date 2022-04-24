@@ -13,7 +13,7 @@ from orders import oco_order
 
 logging.basicConfig(level=logging.INFO)
 USDT_AMOUNT = 0
-coin_list = ['CRVBUSD', 'DYDXBUSD']
+pairList = ['CRVBUSD', 'DYDXBUSD']
 
 
 def trader(asset):
@@ -42,7 +42,7 @@ def trader(asset):
 
             # Previous close price - ATR for limit buy level.
             limit = common.truncate(coin.prevPrice - coin.atr, coin.priceDec)
-            stop = common.truncate(coin.prevPrice + (coin.atr * 98 / 100), coin.priceDec)
+            stop = common.truncate(coin.prevPrice + (coin.atr * 90 / 100), coin.priceDec)
             # Previous price + (ATR / 2) for stop limit.
             stop_limit = common.truncate(coin.prevPrice + coin.atr, coin.priceDec)
             # The purchase amount is calculated by USDT amount / stop limit price.
@@ -98,7 +98,7 @@ def trader(asset):
             # Previous close price + ATR value for limit sell level.
             limit = common.truncate(coin.prevPrice + coin.atr, coin.priceDec)
             # Previous close price - (ATR * 98 / 100) for stop trigger.
-            stop = common.truncate(coin.prevPrice - (coin.atr * 98 / 100), coin.priceDec)
+            stop = common.truncate(coin.prevPrice - (coin.atr * 90 / 100), coin.priceDec)
             # Previous close price - ATR for stop limit.
             stop_limit = common.truncate(coin.prevPrice - coin.atr, coin.priceDec)
             # Coin amount information is getting from spot wallet.
@@ -148,23 +148,24 @@ def trader(asset):
 
 # MAIN AND INFINITE LOOP FUNCTION.
 def bot():
-    global coin_list, USDT_AMOUNT
-    hasPosList = database.initializer(pair_list=coin_list)
+    global pairList, USDT_AMOUNT
+    hasPosList = common.initializer(pair_list=pairList)
     if len(hasPosList) > 0:
         logging.info(common.HAVE_ASSET_LOG.format(', '.join(hasPosList)))
     del hasPosList
     while 1:
         while 1:
-            for coin in coin_list:
+            for pair in pairList:
                 try:
-                    database.set_islong(asset=coin, isLong=common.position_control(asset=coin))
-                    database.set_hasBuyOrder(asset=coin,
-                                             hasBuyOrder=common.open_order_control(asset=coin, order_side='BUY'))
-                    database.set_hasSellOrder(asset=coin,
-                                              hasSellOrder=common.open_order_control(asset=coin, order_side='SELL'))
-                    USDT_AMOUNT = common.usd_alloc(coin_list)
-                    trader(asset=coin)
-                    time.sleep(5)
+                    USDT_AMOUNT = common.usd_alloc(pairList)
+                    isLong = common.position_control(asset=pair)
+                    hasBuyOrder = common.open_order_control(asset=pair, order_side='BUY')
+                    hasSellOrder = common.open_order_control(asset=pair, order_side='SELL')
+                    database.set_islong(asset=pair, isLong=isLong)
+                    database.set_hasBuyOrder(asset=pair, hasBuyOrder=hasBuyOrder)
+                    database.set_hasSellOrder(asset=pair, hasSellOrder=hasSellOrder)
+                    trader(asset=pair)
+                    time.sleep(10)
                 except Exception as e:
                     print(e)
                 else:
@@ -172,6 +173,6 @@ def bot():
 
 
 start_now = datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
-common.tweet(common.START_LOG.format(start_now, ", ".join(coin_list)))
-logging.info(common.START_LOG.format(start_now, ", ".join(coin_list)))
+common.tweet(common.START_LOG.format(start_now, ", ".join(pairList)))
+logging.info(common.START_LOG.format(start_now, ", ".join(pairList)))
 bot()

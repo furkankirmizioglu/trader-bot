@@ -36,7 +36,7 @@ class Coin:
         self.zScore = common.truncate(stats.zscore(a=self.candles, axis=0, nan_policy='omit')[-1], self.priceDec)
         self.lastPrice = self.candles[-1]
         self.prevPrice = self.candles[-2]
-        self.buyFlag, self.sellFlag = database.get_order_flag(asset=self.pair)
+        self.buyFlag, self.sellFlag = database.get_orderFlag(asset=self.pair)
         self.hasBuyOrder = database.get_hasBuyOrder(asset=self.pair)
         self.hasSellOrder = database.get_hasSellOrder(asset=self.pair)
         del self.candles
