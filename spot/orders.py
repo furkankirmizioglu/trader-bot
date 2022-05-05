@@ -30,10 +30,9 @@ def limit_order(pair, side, quantity, limit_price):
                             timeInForce=Client.TIME_IN_FORCE_GTC)
         log = SUBMIT_ORDER_LOG.format(now, pair, quantity, side.upper())
         logging.info(log)
-    except BinanceAPIException as e:
-        print(e)
-    except BinanceOrderException as e:
-        print(e)
+    except (BinanceAPIException, BinanceOrderException) as ex:
+        print(ex)
+        raise ex
 
 
 # Submit spot oco orders to Binance.
@@ -58,12 +57,8 @@ def oco_order(pair, side, quantity, oco_price, stop, stop_limit):
                   quantity=quantity,
                   price=oco_price,
                   stop_price=stop_limit)
-    except BinanceAPIException as e:
-        # error handling goes here
-        print(e)
-    except BinanceOrderException as e:
-        # error handling goes here
-        print(e)
+    except (BinanceAPIException, BinanceOrderException) as ex:
+        raise ex
 
 
 # Submit leveraged market orders to Binance.
@@ -77,9 +72,6 @@ def market_order(pair, order_side, quantity):
         log = SUBMIT_ORDER_LOG.format(now, pair, quantity, order_side.upper())
         logging.info(log)
 
-    except BinanceAPIException as e:
-        # error handling goes here
-        print(e)
-    except BinanceOrderException as e:
-        # error handling goes here
-        print(e)
+    except (BinanceAPIException, BinanceOrderException) as ex:
+        print(ex)
+        raise ex
