@@ -13,8 +13,8 @@ config.read(dirName)
 API_KEY = config.get('BinanceSignIn', 'apikey')
 API_SECRET_KEY = config.get('BinanceSignIn', 'secretkey')
 client = Client(api_key=API_KEY, api_secret=API_SECRET_KEY)
-SUBMIT_ORDER_LOG = "{0} - {3} order for {2} amount of {1} has been submitted."
-TWEET_OCO_FORMAT = "{0} - {1} order for {2} has been submitted.\nLimit : {3}\nStop-Limit: {4}"
+LIMIT_ORDER_LOG = "{0} - {3} order for {2} amount of {1} has been submitted.\nLimit : {4}"
+OCO_ORDER_LOG = "{0} - {1} order for {2} has been submitted.\nLimit : {3}\nStop-Limit: {4}"
 logging.basicConfig(level=logging.INFO)
 
 
@@ -28,50 +28,33 @@ def limit_order(pair, side, quantity, limit_price):
                             quantity=quantity,
                             price=limit_price,
                             timeInForce=Client.TIME_IN_FORCE_GTC)
-        log = SUBMIT_ORDER_LOG.format(now, pair, quantity, side.upper())
+        log = LIMIT_ORDER_LOG.format(now, pair, quantity, side.upper(), limit_price)
         logging.info(log)
     except (BinanceAPIException, BinanceOrderException) as ex:
-        print(ex)
         raise ex
 
 
 # Submit spot oco orders to Binance.
-def oco_order(pair, side, quantity, oco_price, stop, stop_limit):
+def oco_order(pair, side, quantity, limit, stop, stop_limit):
     now = datetime.datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
     try:
         response = client.create_oco_order(symbol=pair,
                                            side=side,
                                            quantity=quantity,
-                                           price=oco_price,
+                                           price=limit,
                                            stopPrice=stop,
                                            stopLimitPrice=stop_limit,
                                            stopLimitTimeInForce=Client.TIME_IN_FORCE_GTC)
         orderId = response['orders'][0]['orderId']
-        log = SUBMIT_ORDER_LOG.format(now, pair, quantity, side.upper())
+        log = OCO_ORDER_LOG.format(now, side.capitalize(), pair, limit, stop_limit)
         logging.info(log)
-        tweet(TWEET_OCO_FORMAT.format(now, side.capitalize(), pair, oco_price, stop_limit))
+        tweet(log)
         order_log(instance_id=now,
                   orderId=orderId,
                   asset=pair,
                   side=side,
                   quantity=quantity,
-                  price=oco_price,
+                  price=limit,
                   stop_price=stop_limit)
     except (BinanceAPIException, BinanceOrderException) as ex:
-        raise ex
-
-
-# Submit leveraged market orders to Binance.
-def market_order(pair, order_side, quantity):
-    now = datetime.datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
-    try:
-        client.create_order(symbol=pair,
-                            side=order_side,
-                            type=Client.ORDER_TYPE_MARKET,
-                            quantity=quantity)
-        log = SUBMIT_ORDER_LOG.format(now, pair, quantity, order_side.upper())
-        logging.info(log)
-
-    except (BinanceAPIException, BinanceOrderException) as ex:
-        print(ex)
         raise ex

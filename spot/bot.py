@@ -13,7 +13,7 @@ from orders import oco_order
 
 logging.basicConfig(level=logging.INFO)
 USDT_AMOUNT = 0
-pairList = ['DYDXBUSD']
+pairList = ['CRVBUSD', 'DYDXBUSD']
 
 
 def trader(asset):
@@ -53,13 +53,13 @@ def trader(asset):
                 oco_order(pair=coin.pair,
                           side=Client.SIDE_BUY,
                           quantity=quantity,
-                          oco_price=limit,
+                          limit=limit,
                           stop=stop,
                           stop_limit=stop_limit)
                 database.set_hasBuyOrder(asset=coin.pair, hasBuyOrder=True)
                 logging.info(common.PROCESS_TIME_LOG.format(common.truncate((time.time() - start), 3)))
             except Exception as ex:
-                raise ex
+                logging.error(ex)
 
         # If Z-SCORE is less than -1 and last price is less than bottom level, submit a buy order.
         # However, price will be less than mavilim price. So sets sell flag to 0 for preventing sell order.
@@ -77,14 +77,14 @@ def trader(asset):
                 oco_order(pair=coin.pair,
                           side=Client.SIDE_BUY,
                           quantity=quantity,
-                          oco_price=limit,
+                          limit=limit,
                           stop=stop,
                           stop_limit=stop_limit)
                 database.set_hasBuyOrder(asset=coin.pair, hasBuyOrder=True)
                 database.set_order_flag(asset=coin.pair, side=Client.SIDE_SELL, flag=0)
                 logging.info(common.PROCESS_TIME_LOG.format(common.truncate((time.time() - start), 3)))
             except Exception as ex:
-                raise ex
+                logging.error(ex)
     # SELL CONDITIONS.
     # If already purchased the asset and sell flag equals 1, then enter this condition.
     elif coin.is_long and coin.sellFlag == 1:
@@ -114,13 +114,13 @@ def trader(asset):
                 oco_order(pair=coin.pair,
                           side=Client.SIDE_SELL,
                           quantity=quantity,
-                          oco_price=limit,
+                          limit=limit,
                           stop=stop,
                           stop_limit=stop_limit)
                 database.set_hasSellOrder(asset=coin.pair, hasSellOrder=True)
                 logging.info(common.PROCESS_TIME_LOG.format(common.truncate((time.time() - start), 3)))
             except Exception as ex:
-                raise ex
+                logging.error(ex)
 
         # IF Z-SCORE is greater than 1.5 and last price is greater than top level, then submit a top sell order.
         # However, price will be greater than mavilim price. So it sets buy flag to 0 for preventing buy order.
@@ -140,14 +140,14 @@ def trader(asset):
                 oco_order(pair=coin.pair,
                           side=Client.SIDE_SELL,
                           quantity=quantity,
-                          oco_price=limit,
+                          limit=limit,
                           stop=stop,
                           stop_limit=stop_limit)
                 database.set_hasSellOrder(asset=coin.pair, hasSellOrder=True)
                 database.set_order_flag(asset=coin.pair, side=Client.SIDE_BUY, flag=0)
                 logging.info(common.PROCESS_TIME_LOG.format(common.truncate((time.time() - start), 3)))
             except Exception as ex:
-                raise ex
+                logging.error(ex)
 
     # If previous close price crosses up mavilim and sell flag is 0 then set sell flag to 1.
     if coin.prevPrice > coin.mavilimw and coin.sellFlag == 0:
@@ -177,8 +177,8 @@ def bot():
                     database.set_hasSellOrder(asset=pair, hasSellOrder=hasSellOrder)
                     trader(asset=pair)
                     time.sleep(10)
-                except Exception as e:
-                    print(e)
+                except Exception as ex:
+                    logging.error(ex)
                 else:
                     pass
 
