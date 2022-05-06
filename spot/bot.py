@@ -13,7 +13,7 @@ from orders import oco_order
 
 logging.basicConfig(level=logging.INFO)
 USDT_AMOUNT = 0
-pairList = ['CRVBUSD', 'DYDXBUSD']
+pairList = ['DYDXBUSD']
 
 
 def trader(asset):
@@ -107,7 +107,7 @@ def trader(asset):
             # Previous close price - ATR for stop limit.
             stop_limit = common.truncate(coin.prevPrice - coin.atr, coin.priceDec)
             # Coin amount information is getting from spot wallet.
-            quantity = common.wallet(asset=coin.pair)
+            quantity = common.truncate(common.wallet(asset=coin.pair), coin.qtyDec)
 
             # Submit sell order to Binance. Send tweet, write log to ORDER_LOG table and terminal.
             try:
