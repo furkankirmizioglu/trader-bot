@@ -12,12 +12,19 @@ from coin import Coin
 from orders import oco_order
 
 logging.basicConfig(level=logging.INFO)
-USDT_AMOUNT = 0
-pairList = ['CRVBUSD', 'DYDXBUSD']
+pairList = ['DYDXBUSD']
 
 
-def trader(asset):
+def trader(asset, USDT_AMOUNT):
     start = time.time()
+
+    isLong = common.position_control(asset=asset)
+    database.set_islong(asset=asset, isLong=isLong)
+    hasBuyOrder = common.open_order_control(asset=asset, order_side='BUY')
+    database.set_hasBuyOrder(asset=asset, hasBuyOrder=hasBuyOrder)
+    hasSellOrder = common.open_order_control(asset=asset, order_side='SELL')
+    database.set_hasSellOrder(asset=asset, hasSellOrder=hasSellOrder)
+
     coin = Coin(asset=asset)
 
     # BUY CONDITIONS.
@@ -85,6 +92,7 @@ def trader(asset):
                 logging.info(common.PROCESS_TIME_LOG.format(common.truncate((time.time() - start), 3)))
             except Exception as ex:
                 logging.error(ex)
+
     # SELL CONDITIONS.
     # If already purchased the asset and sell flag equals 1, then enter this condition.
     elif coin.is_long and coin.sellFlag == 1:
@@ -159,32 +167,25 @@ def trader(asset):
 
 # MAIN AND INFINITE LOOP FUNCTION.
 def bot():
-    global pairList, USDT_AMOUNT
+    global pairList
     hasPosList = common.initializer(pair_list=pairList)
     if len(hasPosList) > 0:
         logging.info(common.HAVE_ASSET_LOG.format(', '.join(hasPosList)))
     del hasPosList
     while 1:
-        while 1:
-            for pair in pairList:
-                try:
-                    USDT_AMOUNT = common.usd_alloc(pairList)
-                    isLong = common.position_control(asset=pair)
-                    hasBuyOrder = common.open_order_control(asset=pair, order_side='BUY')
-                    hasSellOrder = common.open_order_control(asset=pair, order_side='SELL')
-                    database.set_islong(asset=pair, isLong=isLong)
-                    database.set_hasBuyOrder(asset=pair, hasBuyOrder=hasBuyOrder)
-                    database.set_hasSellOrder(asset=pair, hasSellOrder=hasSellOrder)
-                    trader(asset=pair)
-                    time.sleep(10)
-                except Exception as ex:
-                    logging.error(ex)
-                else:
-                    pass
+        USDT_AMOUNT = common.usd_alloc(pairList)
+        for pair in pairList:
+            try:
+                trader(asset=pair, USDT_AMOUNT=USDT_AMOUNT)
+                time.sleep(10)
+            except Exception as ex:
+                logging.error(ex)
+            else:
+                pass
 
 
 start_now = datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
 log = common.START_LOG.format(start_now, ", ".join(pairList))
-common.tweet(log)
+# common.tweet(log)
 logging.info(log)
 bot()
