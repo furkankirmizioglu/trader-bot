@@ -186,6 +186,6 @@ def bot():
 
 start_now = datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
 log = common.START_LOG.format(start_now, ", ".join(pairList))
-# common.tweet(log)
+common.tweet(log)
 logging.info(log)
 bot()
