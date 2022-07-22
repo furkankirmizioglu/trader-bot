@@ -1,27 +1,26 @@
 import configparser
 import logging
 import math
+import os.path
 from datetime import datetime, timedelta
 import tweepy
 from binance.client import Client
-
-from database import get_islong
+import database
 
 BUSD = 'BUSD'
 USDT = 'USDT'
-OPEN_ORDER_LOG = "{0} - You already have a {2} order of {1}."
 HAVE_ASSET_LOG = "You already purchased these assets: {0}"
 MIN_USD = 12
 MIN_AMOUNT_EXCEPTION_LOG = "{0} - Buy amount cannot be less than {2} USDT! {1} buy order is invalid and won't submit."
 START_LOG = "{0} - TraderBot has started. Running for {1}"
 CANCEL_ORDER_LOG = "{0} - Latest {2} order of {1} has been cancelled."
 PROCESS_TIME_LOG = "This order has been processed in {} seconds."
-UP = 'UP'
-DOWN = 'DOWN'
+
 config = configparser.ConfigParser()
-config.read('BinanceBot.properties')
-API_KEY = config.get('BinanceSignIn', 'apikey')
-API_SECRET_KEY = config.get('BinanceSignIn', 'apisecretkey')
+dirName = os.path.dirname(__file__) + "/BinanceBot.ini"
+config.read(dirName)
+API_KEY = config.get("BinanceSignIn", "apikey")
+API_SECRET_KEY = config.get("BinanceSignIn", "secretkey")
 client = Client(api_key=API_KEY, api_secret=API_SECRET_KEY)
 logging.basicConfig(level=logging.INFO)
 
@@ -63,7 +62,7 @@ def price_action(symbol, interval):
     timestampsec = int(datetime.timestamp(timestampsec))
     exp = len(str(timestamp)) - len(str(timestampsec))
     timestampsec *= pow(10, exp)
-    second_set = client.get_klines(symbol=symbol, interval=interval, limit=1000,endTime=timestampsec)
+    second_set = client.get_klines(symbol=symbol, interval=interval, limit=1000, endTime=timestampsec)
     joined_list = [*second_set, *first_set]
     return joined_list
 
@@ -78,10 +77,15 @@ def wallet(asset):
         return float(data['free'])
 
 
-# Checks if user has purchased the asset.
-def position_control(asset):
+def get_min_qty(asset):
     info = client.get_symbol_info(asset)
     min_qty = float(info['filters'][2]['minQty'])
+    return min_qty
+
+
+# Checks if user has purchased the asset.
+def position_control(asset):
+    min_qty = database.get_minQty(asset=asset)
     return True if wallet(asset=asset) > min_qty else False
 
 
@@ -100,7 +104,7 @@ def open_order_control(asset, order_side):
 
 # Cancels given order.
 def cancel_order(asset, order_side):
-    now = datetime.now().replace(microsecond=0)
+    now = datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
     orders = client.get_open_orders(symbol=asset)
     order_id = orders[-1]['orderId']
     client.cancel_order(symbol=asset, orderId=order_id)
@@ -110,14 +114,32 @@ def cancel_order(asset, order_side):
 
 # Sets amount of purchasing dynamically.
 def usd_alloc(asset_list):
-    priceDec, qtyDec = decimal_place(asset=BUSD + USDT)
+    priceDec, qtyDec = database.get_decimals(asset=BUSD + USDT)
     divider = 0
     for x in asset_list:
-        has_asset = get_islong(x)
-        has_order = open_order_control(asset=x, order_side=Client.SIDE_BUY)
+        has_asset = database.get_islong(x)
+        has_order = database.get_hasBuyOrder(asset=x)
         if not has_asset and not has_order:
             divider += 1
     return truncate(wallet(BUSD) / divider, priceDec) if divider > 0 else truncate(wallet(BUSD), priceDec)
+
+
+def initializer(pair_list):
+    has_long = []
+    database.init_data(asset='BUSDUSDT')
+    for pair in pair_list:
+        database.init_data(asset=pair)
+        isLong = position_control(asset=pair)
+        database.set_islong(asset=pair, isLong=isLong)
+        if isLong:
+            has_long.append(pair)
+
+        hasBuyOrder = open_order_control(asset=pair, order_side='BUY')
+        hasSellOrder = open_order_control(asset=pair, order_side='SELL')
+
+        database.set_hasBuyOrder(asset=pair, hasBuyOrder=hasBuyOrder)
+        database.set_hasSellOrder(asset=pair, hasSellOrder=hasSellOrder)
+    return has_long
 
 
 # Sends tweet.
