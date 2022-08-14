@@ -12,7 +12,7 @@ from coin import Coin
 from orders import oco_order
 
 logging.basicConfig(level=logging.INFO)
-pairList = ['DYDXBUSD']
+pairList = ['MANABUSD']
 
 
 def trader(asset, USDT_AMOUNT):
@@ -70,7 +70,7 @@ def trader(asset, USDT_AMOUNT):
 
         # If Z-SCORE is less than -1 and last price is less than bottom level, submit a buy order.
         # However, price will be less than mavilim price. So sets sell flag to 0 for preventing sell order.
-        elif coin.zScore < -1 and coin.lastPrice < coin.bottom:
+        elif coin.zScore < -2 and coin.lastPrice < coin.bottom:
             if USDT_AMOUNT < common.MIN_USD:
                 now = datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
                 raise Exception(logging.error(common.MIN_AMOUNT_EXCEPTION_LOG.format(now, coin.pair, common.MIN_USD)))
@@ -132,7 +132,7 @@ def trader(asset, USDT_AMOUNT):
 
         # IF Z-SCORE is greater than 1.5 and last price is greater than top level, then submit a top sell order.
         # However, price will be greater than mavilim price. So it sets buy flag to 0 for preventing buy order.
-        elif coin.zScore > 1.5 and coin.lastPrice > coin.top:
+        elif coin.zScore > 2 and coin.lastPrice > coin.top:
 
             # Last price + ATR for limit sell level.
             limit = common.truncate(coin.lastPrice + coin.atr, coin.priceDec)
@@ -165,6 +165,18 @@ def trader(asset, USDT_AMOUNT):
         database.set_order_flag(asset=coin.pair, side=Client.SIDE_BUY, flag=1)
 
 
+def fetchUSDT(pairlist):
+    restart = True
+    while restart:
+        try:
+            USDT = common.usd_alloc(pairlist)
+            restart = False
+            return USDT
+        except Exception as ex:
+            logging.error(ex)
+            continue
+
+
 # MAIN AND INFINITE LOOP FUNCTION.
 def bot():
     global pairList
@@ -173,10 +185,10 @@ def bot():
         logging.info(common.HAVE_ASSET_LOG.format(', '.join(hasPosList)))
     del hasPosList
     while 1:
-        USDT_AMOUNT = common.usd_alloc(pairList)
+        USDT = fetchUSDT(pairlist=pairList)
         for pair in pairList:
             try:
-                trader(asset=pair, USDT_AMOUNT=USDT_AMOUNT)
+                trader(asset=pair, USDT_AMOUNT=USDT)
                 time.sleep(10)
             except Exception as ex:
                 logging.error(ex)
