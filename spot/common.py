@@ -13,8 +13,8 @@ HAVE_ASSET_LOG = "You already purchased these assets: {0}"
 MIN_USD = 12
 MIN_AMOUNT_EXCEPTION_LOG = "{0} - Buy amount cannot be less than {2} USDT! {1} buy order is invalid and won't submit."
 START_LOG = "{0} - TraderBot has started. Running for {1}"
-CANCEL_ORDER_LOG = "{0} - Latest {2} order of {1} has been cancelled."
-PROCESS_TIME_LOG = "This order has been processed in {} seconds."
+CANCEL_ORDER_LOG = "{0} - Latest {2} order of {1} has cancelled."
+PROCESS_TIME_LOG = "This order has processed in {} seconds."
 
 config = configparser.ConfigParser()
 dirName = os.path.dirname(__file__) + "/BinanceBot.ini"
@@ -108,8 +108,9 @@ def cancel_order(asset, order_side):
     orders = client.get_open_orders(symbol=asset)
     order_id = orders[-1]['orderId']
     client.cancel_order(symbol=asset, orderId=order_id)
-    logging.info(CANCEL_ORDER_LOG.format(now, asset, order_side))
-    tweet(status=CANCEL_ORDER_LOG.format(now, asset, order_side))
+    log = CANCEL_ORDER_LOG.format(now, asset, order_side.upper())
+    logging.info(log)
+    tweet(status=log)
 
 
 # Sets amount of purchasing dynamically.

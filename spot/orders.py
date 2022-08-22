@@ -13,8 +13,8 @@ config.read(dirName)
 API_KEY = config.get('BinanceSignIn', 'apikey')
 API_SECRET_KEY = config.get('BinanceSignIn', 'secretkey')
 client = Client(api_key=API_KEY, api_secret=API_SECRET_KEY)
-LIMIT_ORDER_LOG = "{0} - {3} order for {2} amount of {1} has been submitted.\nLimit : {4}"
-OCO_ORDER_LOG = "{0} - {1} order for {2} has been submitted.\nLimit : {3}\nStop-Limit: {4}"
+LIMIT_ORDER_LOG = "{0} - {3} order for {2} amount of {1} has submitted.\nLimit : {4}"
+OCO_ORDER_LOG = "{0} - {1} order for {2} has submitted.\nLimit : {3}\nStop-Limit: {4}"
 logging.basicConfig(level=logging.INFO)
 
 
@@ -46,7 +46,7 @@ def oco_order(pair, side, quantity, limit, stop, stop_limit):
                                            stopLimitPrice=stop_limit,
                                            stopLimitTimeInForce=Client.TIME_IN_FORCE_GTC)
         orderId = response['orders'][0]['orderId']
-        log = OCO_ORDER_LOG.format(now, side.capitalize(), pair, limit, stop_limit)
+        log = OCO_ORDER_LOG.format(now, side.upper(), pair, limit, stop_limit)
         logging.info(log)
         tweet(log)
         order_log(instance_id=now,
