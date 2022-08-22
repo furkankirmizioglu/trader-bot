@@ -4,6 +4,7 @@
 # TRANSACTIONS WILL BE TWEETED.
 import logging
 import time
+import os
 from datetime import datetime
 from binance.client import Client
 import common
@@ -191,10 +192,12 @@ def bot():
                 logging.error(ex)
             else:
                 pass
+        # Clears console after each cycle.
+        os.system('clear')
 
 
 start_now = datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
 log = common.START_LOG.format(start_now, ", ".join(pairList))
-# common.tweet(log)
+common.tweet(log)
 logging.info(log)
 bot()
