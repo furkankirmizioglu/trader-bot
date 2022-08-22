@@ -13,19 +13,16 @@ from orders import oco_order
 
 logging.basicConfig(level=logging.INFO)
 pairList = ['MANABUSD']
+INITIAL_LOG = "{0} - {1} | Price: {2} | Z-Score: {3} | Top: {4} | Bottom: {5}"
 
 
 def trader(asset, USDT_AMOUNT):
     start = time.time()
 
-    isLong = common.position_control(asset=asset)
-    database.set_islong(asset=asset, isLong=isLong)
-    hasBuyOrder = common.open_order_control(asset=asset, order_side='BUY')
-    database.set_hasBuyOrder(asset=asset, hasBuyOrder=hasBuyOrder)
-    hasSellOrder = common.open_order_control(asset=asset, order_side='SELL')
-    database.set_hasSellOrder(asset=asset, hasSellOrder=hasSellOrder)
-
     coin = Coin(asset=asset)
+    now = datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
+
+    logging.info(INITIAL_LOG.format(now, coin.pair, coin.lastPrice, coin.zScore, coin.top, coin.bottom))
 
     # BUY CONDITIONS.
     # If didn't purchase this asset before and buy flag equals 1, then function enters buy conditions.
@@ -70,7 +67,7 @@ def trader(asset, USDT_AMOUNT):
 
         # If Z-SCORE is less than -1 and last price is less than bottom level, submit a buy order.
         # However, price will be less than mavilim price. So sets sell flag to 0 for preventing sell order.
-        elif coin.zScore < -2 and coin.lastPrice < coin.bottom:
+        elif coin.zScore < -1 and coin.lastPrice < coin.bottom:
             if USDT_AMOUNT < common.MIN_USD:
                 now = datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
                 raise Exception(logging.error(common.MIN_AMOUNT_EXCEPTION_LOG.format(now, coin.pair, common.MIN_USD)))
@@ -132,7 +129,7 @@ def trader(asset, USDT_AMOUNT):
 
         # IF Z-SCORE is greater than 1.5 and last price is greater than top level, then submit a top sell order.
         # However, price will be greater than mavilim price. So it sets buy flag to 0 for preventing buy order.
-        elif coin.zScore > 2 and coin.lastPrice > coin.top:
+        elif coin.zScore > 1 and coin.lastPrice > coin.top:
 
             # Last price + ATR for limit sell level.
             limit = common.truncate(coin.lastPrice + coin.atr, coin.priceDec)
@@ -198,6 +195,6 @@ def bot():
 
 start_now = datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
 log = common.START_LOG.format(start_now, ", ".join(pairList))
-common.tweet(log)
+# common.tweet(log)
 logging.info(log)
 bot()

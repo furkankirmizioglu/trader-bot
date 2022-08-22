@@ -27,6 +27,8 @@ class Coin:
 
     def __init__(self, asset):
         self.pair = asset
+        isLong = common.position_control(asset=asset)
+        database.set_islong(asset=asset, isLong=isLong)
         self.is_long = database.get_islong(asset=self.pair)
         self.priceDec, self.qtyDec = database.get_decimals(asset=self.pair)
         self.candles = common.price_action(symbol=self.pair, interval=PRICE_INTERVAL)
@@ -37,6 +39,10 @@ class Coin:
         self.lastPrice = self.candles[-1]
         self.prevPrice = self.candles[-2]
         self.buyFlag, self.sellFlag = database.get_orderFlag(asset=self.pair)
+        hasBuyOrder = common.open_order_control(asset=asset, order_side='BUY')
+        database.set_hasBuyOrder(asset=asset, hasBuyOrder=hasBuyOrder)
         self.hasBuyOrder = database.get_hasBuyOrder(asset=self.pair)
         self.hasSellOrder = database.get_hasSellOrder(asset=self.pair)
+        hasSellOrder = common.open_order_control(asset=asset, order_side='SELL')
+        database.set_hasSellOrder(asset=asset, hasSellOrder=hasSellOrder)
         del self.candles
