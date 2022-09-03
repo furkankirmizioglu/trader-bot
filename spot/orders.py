@@ -14,7 +14,7 @@ API_KEY = config.get('BinanceSignIn', 'apikey')
 API_SECRET_KEY = config.get('BinanceSignIn', 'secretkey')
 client = Client(api_key=API_KEY, api_secret=API_SECRET_KEY)
 LIMIT_ORDER_LOG = "{0} - {3} order for {2} amount of {1} has submitted.\nLimit : {4}"
-OCO_ORDER_LOG = "{0} - {1} order for {2} has submitted.\nLimit : {3}\nStop-Limit: {4}"
+OCO_ORDER_LOG = "{0} - {1} order for {2} has submitted.\nLimit : {3} | Stop-Limit: {4}"
 logging.basicConfig(level=logging.INFO)
 
 

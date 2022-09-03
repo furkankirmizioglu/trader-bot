@@ -2,27 +2,33 @@
 # TIME PERIOD IS 1 HOUR
 # USES Z SCORE, MAVILIMW AND AVERAGE TRUE RANGE INDICATORS
 # TRANSACTIONS WILL BE TWEETED.
+import configparser
 import logging
 import time
 import os
 from datetime import datetime
-from binance.client import Client
 import common
 import database
 from coin import Coin
 from orders import oco_order
 
 logging.basicConfig(level=logging.INFO)
-pairList = ['MANABUSD']
+config = configparser.ConfigParser()
+dirName = os.path.dirname(__file__) + "/BinanceBot.ini"
+config.read(dirName)
+pairList = config.get("TraderBotConfig", "pairlist").split(',')
+PRICE_INTERVAL = config.get("TraderBotConfig", "interval")
 INITIAL_LOG = "{0} - {1} | Price: {2} | Z-Score: {3} | Top: {4} | Bottom: {5}"
+
+SIDE_BUY = 'BUY'
+SIDE_SELL = 'SELL'
 
 
 def trader(asset, USDT_AMOUNT):
     start = time.time()
 
-    coin = Coin(asset=asset)
+    coin = Coin(asset=asset, interval=PRICE_INTERVAL)
     now = datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
-
     logging.info(INITIAL_LOG.format(now, coin.pair, coin.lastPrice, coin.zScore, coin.top, coin.bottom))
 
     # BUY CONDITIONS.
@@ -32,7 +38,7 @@ def trader(asset, USDT_AMOUNT):
         # If already have a buy order but trend signal has broken, then cancel the order. Else just pass.
         if coin.hasBuyOrder:
             if coin.prevPrice < coin.mavilimw and coin.sellFlag == 1:
-                common.cancel_order(asset=coin.pair, order_side=Client.SIDE_BUY)
+                common.cancel_order(asset=coin.pair, order_side=SIDE_BUY)
                 database.set_hasBuyOrder(asset=coin.pair, hasBuyOrder=False)
             else:
                 pass
@@ -56,7 +62,7 @@ def trader(asset, USDT_AMOUNT):
             try:
                 # Submit order to Binance. Send tweet, write log to ORDER_LOG table and terminal.
                 oco_order(pair=coin.pair,
-                          side=Client.SIDE_BUY,
+                          side=SIDE_BUY,
                           quantity=quantity,
                           limit=limit,
                           stop=stop,
@@ -80,13 +86,13 @@ def trader(asset, USDT_AMOUNT):
 
             try:
                 oco_order(pair=coin.pair,
-                          side=Client.SIDE_BUY,
+                          side=SIDE_BUY,
                           quantity=quantity,
                           limit=limit,
                           stop=stop,
                           stop_limit=stop_limit)
                 database.set_hasBuyOrder(asset=coin.pair, hasBuyOrder=True)
-                database.set_order_flag(asset=coin.pair, side=Client.SIDE_SELL, flag=0)
+                database.set_order_flag(asset=coin.pair, side=SIDE_SELL, flag=0)
                 logging.info(common.PROCESS_TIME_LOG.format(common.truncate((time.time() - start), 3)))
             except Exception as ex:
                 logging.error(ex)
@@ -98,7 +104,7 @@ def trader(asset, USDT_AMOUNT):
         # If there is already a sell order but sell signal has broken, then cancel the sell order.
         if coin.hasSellOrder:
             if coin.prevPrice > coin.mavilimw and coin.buyFlag == 1:
-                common.cancel_order(asset=coin.pair, order_side=Client.SIDE_SELL)
+                common.cancel_order(asset=coin.pair, order_side=SIDE_SELL)
                 database.set_hasSellOrder(asset=coin.pair, hasSellOrder=False)
             else:
                 pass
@@ -118,7 +124,7 @@ def trader(asset, USDT_AMOUNT):
             # Submit sell order to Binance. Send tweet, write log to ORDER_LOG table and terminal.
             try:
                 oco_order(pair=coin.pair,
-                          side=Client.SIDE_SELL,
+                          side=SIDE_SELL,
                           quantity=quantity,
                           limit=limit,
                           stop=stop,
@@ -144,23 +150,23 @@ def trader(asset, USDT_AMOUNT):
             # Submit sell order to Binance. Send tweet, write log to ORDER_LOG table and terminal.
             try:
                 oco_order(pair=coin.pair,
-                          side=Client.SIDE_SELL,
+                          side=SIDE_SELL,
                           quantity=quantity,
                           limit=limit,
                           stop=stop,
                           stop_limit=stop_limit)
                 database.set_hasSellOrder(asset=coin.pair, hasSellOrder=True)
-                database.set_order_flag(asset=coin.pair, side=Client.SIDE_BUY, flag=0)
+                database.set_order_flag(asset=coin.pair, side=SIDE_BUY, flag=0)
                 logging.info(common.PROCESS_TIME_LOG.format(common.truncate((time.time() - start), 3)))
             except Exception as ex:
                 logging.error(ex)
 
     # If previous close price crosses up mavilim and sell flag is 0 then set sell flag to 1.
     if coin.prevPrice > coin.mavilimw and coin.sellFlag == 0:
-        database.set_order_flag(asset=coin.pair, side=Client.SIDE_SELL, flag=1)
+        database.set_order_flag(asset=coin.pair, side=SIDE_SELL, flag=1)
     # If previous close price crosses down mavilim and buy flag is 0 then buy flag to 1
     elif coin.prevPrice < coin.mavilimw and coin.buyFlag == 0:
-        database.set_order_flag(asset=coin.pair, side=Client.SIDE_BUY, flag=1)
+        database.set_order_flag(asset=coin.pair, side=SIDE_BUY, flag=1)
 
 
 def fetchUSDT(pairlist):

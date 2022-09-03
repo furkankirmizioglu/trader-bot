@@ -1,11 +1,8 @@
-from binance import Client
 from numpy import array
 from scipy.stats import stats
 import common
 import database
 from indicators import mavilimw_bullandbear, atr
-
-PRICE_INTERVAL = Client.KLINE_INTERVAL_1HOUR
 
 
 class Coin:
@@ -25,13 +22,13 @@ class Coin:
     hasBuyOrder = None
     hasSellOrder = None
 
-    def __init__(self, asset):
+    def __init__(self, asset, interval):
         self.pair = asset
         isLong = common.position_control(asset=asset)
         database.set_islong(asset=asset, isLong=isLong)
         self.is_long = database.get_islong(asset=self.pair)
         self.priceDec, self.qtyDec = database.get_decimals(asset=self.pair)
-        self.candles = common.price_action(symbol=self.pair, interval=PRICE_INTERVAL)
+        self.candles = common.price_action(symbol=self.pair, interval=interval)
         self.atr = atr(klines=self.candles)
         self.candles = array([float(x[4]) for x in self.candles])
         self.mavilimw, self.top, self.bottom = mavilimw_bullandbear(close=self.candles, truncate=self.priceDec)
