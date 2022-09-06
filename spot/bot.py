@@ -57,7 +57,7 @@ def trader(asset, USDT_AMOUNT):
 
         # If there is already a buy order but buy condition has disappeared, the buy order will be canceled.
         if coin.hasBuyOrder:
-            if coin.prevPrice < coin.mavilimw:
+            if coin.prevPrice < coin.mavilimw and coin.sellFlag == 1:
                 common.cancel_order(asset=coin.pair, order_side=SIDE_BUY)
                 database.set_hasBuyOrder(asset=coin.pair, hasBuyOrder=False)
             else:
@@ -125,7 +125,7 @@ def trader(asset, USDT_AMOUNT):
 
         # If there is already a sell order but sell condition has disappeared, cancel the sell order.
         if coin.hasSellOrder:
-            if coin.prevPrice > coin.mavilimw:
+            if coin.prevPrice > coin.mavilimw and coin.buyFlag == 1:
                 common.cancel_order(asset=coin.pair, order_side=SIDE_SELL)
                 database.set_hasSellOrder(asset=coin.pair, hasSellOrder=False)
             else:
