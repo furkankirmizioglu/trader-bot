@@ -17,7 +17,6 @@ config = configparser.ConfigParser()
 dirName = os.path.dirname(__file__) + "/BinanceBot.ini"
 config.read(dirName)
 pairList = config.get("TraderBotConfig", "pairlist").split(',')
-TEST_MODE = config.get('TraderBotConfig', 'testMode')
 PRICE_INTERVAL = config.get("TraderBotConfig", "interval")
 INITIAL_LOG = "{0} - {1} | Price: {2} | Z-Score: {3} | Top: {4} | Bottom: {5}"
 SIDE_BUY = 'BUY'
@@ -197,7 +196,6 @@ def bot():
 
 start_now = datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
 log = common.START_LOG.format(start_now, ", ".join(pairList))
-if not TEST_MODE:
-    common.tweet(log)
+common.tweet(log)
 logging.info(log)
 bot()
