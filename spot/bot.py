@@ -5,7 +5,7 @@
 from logging import info, error, basicConfig, INFO
 from time import time, sleep
 from os import system
-from common import truncate, tweet, cancel_order, initializer, wallet, USD_ALLOCATOR, Now
+from common import truncate, cancel_order, initializer, wallet, USD_ALLOCATOR, Now
 import constants
 import database
 from coin import Coin

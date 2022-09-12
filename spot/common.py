@@ -43,7 +43,7 @@ def decimal_place(asset):
     return truncate_price, truncate_qty
 
 
-# Retrieves last 2000 of price movements.
+# Retrieves last 1000 of price movements.
 def price_action(symbol, interval):
     first_set = client.get_klines(symbol=symbol, interval=interval, limit=1000)
     return first_set
