@@ -215,7 +215,5 @@ def Bot():
 
 
 log = constants.START_LOG.format(Now(), ", ".join(constants.PAIRLIST))
-if not TEST_MODE:
-    tweet(log)
 info(log)
 Bot()
