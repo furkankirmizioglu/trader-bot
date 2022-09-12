@@ -1,6 +1,6 @@
 from logging import basicConfig, INFO, info
 from math import trunc
-from datetime import datetime, timedelta
+from datetime import datetime
 import tweepy
 from binance.client import Client
 import constants
@@ -46,14 +46,7 @@ def decimal_place(asset):
 # Retrieves last 2000 of price movements.
 def price_action(symbol, interval):
     first_set = client.get_klines(symbol=symbol, interval=interval, limit=1000)
-    timestamp = first_set[0][0]
-    timestampsec = datetime.fromtimestamp(timestamp / 1e3) - timedelta(hours=1)
-    timestampsec = int(datetime.timestamp(timestampsec))
-    exp = len(str(timestamp)) - len(str(timestampsec))
-    timestampsec *= pow(10, exp)
-    second_set = client.get_klines(symbol=symbol, interval=interval, limit=1000, endTime=timestampsec)
-    joined_list = [*second_set, *first_set]
-    return joined_list
+    return first_set
 
 
 # Fetches account's balance from Binance wallet.
