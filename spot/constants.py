@@ -24,7 +24,7 @@ CANCEL_ORDER_LOG = "{0} - Latest {2} order of {1} has canceled."
 PROCESS_TIME_LOG = "This order has processed in {} seconds."
 INITIAL_LOG = "{0} - {1} | Price: {2} | Z-Score: {3} | Top: {4} | Bottom: {5}"
 HAVE_ASSET_LOG = "You already purchased these assets: {0}"
-STOP_LIMIT_ORDER_LOG = "{0} - {3} order for {2} amount of {1} has submitted.\nLimit : {4}"
+STOP_LIMIT_ORDER_LOG = "{0} - {3} order for {1} has submitted.\nLimit : {4}"
 OCO_ORDER_LOG = "{0} - {1} order for {2} has submitted.\nLimit : {3} | Stop-Limit: {4}"
 
 BUSD = 'BUSD'

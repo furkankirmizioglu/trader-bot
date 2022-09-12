@@ -20,7 +20,7 @@ def stop_limit_order(pair, side, quantity, limit, stopLimit):
                                        price=limit,
                                        stopPrice=stopLimit,
                                        timeInForce=Client.TIME_IN_FORCE_GTC)
-        log = STOP_LIMIT_ORDER_LOG.format(now, pair, quantity, side.upper(), limit)
+        log = STOP_LIMIT_ORDER_LOG.format(now, pair, side.upper(), limit)
         orderId = response['orderId']
         info(log)
         tweet(log)
