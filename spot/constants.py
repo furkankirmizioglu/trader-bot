@@ -13,6 +13,7 @@ TWITTER_API_SECRET_KEY = config.get('TwitterAPI', 'consumer_secret_key')
 TWITTER_ACCESS_TOKEN = config.get('TwitterAPI', 'access_token')
 TWITTER_ACCESS_SECRET_TOKEN = config.get('TwitterAPI', 'access_secret_token')
 
+FIREBASE_DEVICE_KEY = config.get('FirebaseAPI', 'device_key')
 
 PRICE_INTERVAL = config.get("TraderBotConfig", "interval")
 PAIRLIST = config.get("TraderBotConfig", "pairlist").split(',')
@@ -26,6 +27,8 @@ INITIAL_LOG = "{0} - {1} | Price: {2} | Z-Score: {3} | Top: {4} | Bottom: {5}"
 HAVE_ASSET_LOG = "You already purchased these assets: {0}"
 STOP_LIMIT_ORDER_LOG = "{0} - {3} order for {1} has submitted.\nLimit : {4}"
 OCO_ORDER_LOG = "{0} - {1} order for {2} has submitted.\nLimit : {3} | Stop-Limit: {4}"
+
+NOTIFIER_TITLE = "You have a new trade activity!"
 
 BUSD = 'BUSD'
 USDT = 'USDT'

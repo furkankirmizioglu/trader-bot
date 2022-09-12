@@ -1,10 +1,14 @@
 from logging import basicConfig, INFO, info
 from math import trunc
 from datetime import datetime
+
 import tweepy
 from binance.client import Client
+from firebase_admin import messaging, credentials, initialize_app
 import constants
 import database
+firebase_cred = credentials.Certificate("firebase.json")
+firebase_app = initialize_app(firebase_cred)
 
 client = Client(api_key=constants.API_KEY, api_secret=constants.API_SECRET_KEY)
 basicConfig(level=INFO)
@@ -131,3 +135,19 @@ def tweet(status):
     auth.set_access_token(constants.TWITTER_ACCESS_TOKEN, constants.TWITTER_ACCESS_SECRET_TOKEN)
     twitter = tweepy.API(auth)
     twitter.update_status(status)
+
+
+def notifier(logText):
+    # See documentation on defining a message payload.
+    notification = messaging.Notification(
+        title=constants.NOTIFIER_TITLE,
+        body=logText
+    )
+    message = messaging.Message(
+        token=constants.FIREBASE_DEVICE_KEY,
+        notification=notification
+    )
+    # Send a message to the device corresponding to the provided
+    # registration token.
+    response = messaging.send(message)
+    info('Successfully sent message:', response)

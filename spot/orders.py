@@ -2,7 +2,7 @@ from logging import basicConfig, INFO, info
 from binance.client import Client
 from binance.exceptions import BinanceAPIException, BinanceOrderException
 from constants import API_KEY, API_SECRET_KEY, STOP_LIMIT_ORDER_LOG, OCO_ORDER_LOG
-from common import tweet, Now
+from common import tweet, Now, notifier
 from database import order_log
 
 client = Client(api_key=API_KEY, api_secret=API_SECRET_KEY)
@@ -24,6 +24,7 @@ def stop_limit_order(pair, side, quantity, limit, stopLimit):
         orderId = response['orderId']
         info(log)
         tweet(log)
+        notifier(log)
         order_log(instance_id=now, orderId=orderId, asset=pair, side=side, quantity=quantity, price=limit,
                   stop_price=stopLimit)
     except (BinanceAPIException, BinanceOrderException) as ex:
