@@ -1,28 +1,17 @@
-import configparser
-import logging
-import math
-import os.path
+from logging import basicConfig, INFO, info
+from math import trunc
 from datetime import datetime, timedelta
 import tweepy
 from binance.client import Client
+import constants
 import database
 
-BUSD = 'BUSD'
-USDT = 'USDT'
-HAVE_ASSET_LOG = "You already purchased these assets: {0}"
-MIN_USD = 12
-MIN_AMOUNT_EXCEPTION_LOG = "{0} - Buy amount cannot be less than {2} USDT! {1} buy order is invalid and won't submit."
-START_LOG = "{0} - TraderBot has started. Running for {1}"
-CANCEL_ORDER_LOG = "{0} - Latest {2} order of {1} has cancelled."
-PROCESS_TIME_LOG = "This order has processed in {} seconds."
+client = Client(api_key=constants.API_KEY, api_secret=constants.API_SECRET_KEY)
+basicConfig(level=INFO)
 
-config = configparser.ConfigParser()
-dirName = os.path.dirname(__file__) + "/BinanceBot.ini"
-config.read(dirName)
-API_KEY = config.get("BinanceSignIn", "apikey")
-API_SECRET_KEY = config.get("BinanceSignIn", "secretkey")
-client = Client(api_key=API_KEY, api_secret=API_SECRET_KEY)
-logging.basicConfig(level=logging.INFO)
+
+def Now():
+    return datetime.now().strftime('%d/%m/%Y %H:%M:%S')
 
 
 # Truncates the given value.
@@ -32,17 +21,17 @@ def truncate(number, decimals):
     elif decimals < 0:
         raise ValueError("decimal places has to be 0 or more.")
     elif decimals == 0:
-        return math.trunc(number)
+        return trunc(number)
 
     factor = 10.0 ** decimals
-    return math.trunc(number * factor) / factor
+    return trunc(number * factor) / factor
 
 
 # Sets decimal values based on selected asset.
 def decimal_place(asset):
-    info = client.get_symbol_info(asset)
-    min_price = str(info['filters'][0]['minPrice'])
-    min_qty = str(info['filters'][2]['minQty'])
+    symbolInfo = client.get_symbol_info(asset)
+    min_price = str(symbolInfo['filters'][0]['minPrice'])
+    min_qty = str(symbolInfo['filters'][2]['minQty'])
     start = '0.'
     end = '1'
     truncate_price = len(min_price[min_price.find(start) + len(start):min_price.rfind(end)]) + 1
@@ -69,8 +58,8 @@ def price_action(symbol, interval):
 
 # Fetches account's balance from Binance wallet.
 def wallet(asset):
-    if asset != BUSD:
-        data = client.get_asset_balance(asset=asset.replace(BUSD, ""))
+    if asset != constants.BUSD:
+        data = client.get_asset_balance(asset=asset.replace(constants.BUSD, ""))
         return float(data['free']) + float(data['locked'])
     else:
         data = client.get_asset_balance(asset=asset)
@@ -78,8 +67,8 @@ def wallet(asset):
 
 
 def get_min_qty(asset):
-    info = client.get_symbol_info(asset)
-    min_qty = float(info['filters'][2]['minQty'])
+    qty_info = client.get_symbol_info(asset)
+    min_qty = float(qty_info['filters'][2]['minQty'])
     return min_qty
 
 
@@ -108,45 +97,44 @@ def cancel_order(asset, order_side):
     orders = client.get_open_orders(symbol=asset)
     order_id = orders[-1]['orderId']
     client.cancel_order(symbol=asset, orderId=order_id)
-    log = CANCEL_ORDER_LOG.format(now, asset, order_side.upper())
-    logging.info(log)
+    log = constants.CANCEL_ORDER_LOG.format(now, asset, order_side.upper())
+    info(log)
     tweet(status=log)
 
 
 # Sets amount of purchasing dynamically.
-def usd_alloc(asset_list):
-    priceDec, qtyDec = database.get_decimals(asset=BUSD + USDT)
+def USD_ALLOCATOR(pairList):
+    priceDec, qtyDec = database.get_decimals(asset=constants.BUSD + constants.USDT)
     divider = 0
-    for x in asset_list:
+    for x in pairList:
         has_asset = database.get_islong(x)
         has_order = database.get_hasBuyOrder(asset=x)
         if not has_asset and not has_order:
             divider += 1
-    return truncate(wallet(BUSD) / divider, priceDec) if divider > 0 else truncate(wallet(BUSD), priceDec)
+    return truncate(wallet(constants.BUSD) / divider, priceDec) if divider > 0 else truncate(wallet(constants.BUSD),
+                                                                                             priceDec)
 
 
-def initializer(pair_list):
+def initializer(pairList):
     has_long = []
-    database.init_data(asset='BUSDUSDT')
-    for pair in pair_list:
+    database.init_data(asset=constants.BUSD + constants.USDT)
+    for pair in pairList:
         database.init_data(asset=pair)
         isLong = position_control(asset=pair)
         database.set_islong(asset=pair, isLong=isLong)
         if isLong:
             has_long.append(pair)
 
-        hasBuyOrder = open_order_control(asset=pair, order_side='BUY')
-        hasSellOrder = open_order_control(asset=pair, order_side='SELL')
-
+        hasBuyOrder = open_order_control(asset=pair, order_side=constants.SIDE_BUY)
         database.set_hasBuyOrder(asset=pair, hasBuyOrder=hasBuyOrder)
+        hasSellOrder = open_order_control(asset=pair, order_side=constants.SIDE_SELL)
         database.set_hasSellOrder(asset=pair, hasSellOrder=hasSellOrder)
     return has_long
 
 
 # Sends tweet.
 def tweet(status):
-    auth = tweepy.OAuthHandler(config.get('TwitterAPI', 'consumer_key'),
-                               config.get('TwitterAPI', 'consumer_secret_key'))
-    auth.set_access_token(config.get('TwitterAPI', 'access_token'), config.get('TwitterAPI', 'access_secret_token'))
+    auth = tweepy.OAuthHandler(constants.TWITTER_API_KEY, constants.TWITTER_API_SECRET_KEY)
+    auth.set_access_token(constants.TWITTER_ACCESS_TOKEN, constants.TWITTER_ACCESS_SECRET_TOKEN)
     twitter = tweepy.API(auth)
     twitter.update_status(status)

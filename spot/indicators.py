@@ -2,8 +2,7 @@ import talib
 import common
 import numpy
 
-RSI_PERIOD = 14
-ATR_PERIOD = 14
+from constants import RSI_PERIOD, ATR_PERIOD
 
 
 # Calculates and returns RSI (Relative Strength Index) value.
