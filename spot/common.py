@@ -90,12 +90,12 @@ def open_order_control(asset, order_side):
 
 # Cancels given order.
 def cancel_order(asset, order_side):
-    now = datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
     orders = client.get_open_orders(symbol=asset)
     order_id = orders[-1]['orderId']
     client.cancel_order(symbol=asset, orderId=order_id)
-    log = constants.CANCEL_ORDER_LOG.format(now, asset, order_side.upper())
+    log = constants.CANCEL_ORDER_LOG.format(Now(), asset, order_side.upper())
     info(log)
+    notifier(logText=log)
     tweet(status=log)
 
 
