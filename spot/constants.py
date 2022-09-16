@@ -28,7 +28,10 @@ HAVE_ASSET_LOG = "You already purchased these assets: {0}"
 STOP_LIMIT_ORDER_LOG = "{0} - {2} order for {1} has submitted.\nLimit : {3}"
 OCO_ORDER_LOG = "{0} - {1} order for {2} has submitted.\nLimit : {3} | Stop-Limit: {4}"
 
-NOTIFIER_TITLE = "You have a new trade activity!"
+NOTIFIER_TITLE = "You have a new trade activity"
+NOTIFIER_CANCEL_ORDER_LOG = "Latest {0} order for {1} has canceled."
+NOTIFIER_STOP_LIMIT_ORDER_LOG = "{0} order for {1} has submitted.\nLimit: {2}"
+NOTIFIER_OCO_ORDER_LOG = "{0} order for {1} has submitted.\nLimit: {2}\nStop-Limit: {3}"
 
 BUSD = 'BUSD'
 USDT = 'USDT'

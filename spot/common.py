@@ -1,3 +1,4 @@
+import os
 from logging import basicConfig, INFO, info
 from math import trunc
 from datetime import datetime
@@ -7,7 +8,10 @@ from binance.client import Client
 from firebase_admin import messaging, credentials, initialize_app
 import constants
 import database
-firebase_cred = credentials.Certificate("firebase.json")
+
+path = os.path.dirname(__file__)
+firebase = path + "/data/firebase.json"
+firebase_cred = credentials.Certificate(firebase)
 firebase_app = initialize_app(firebase_cred)
 
 client = Client(api_key=constants.API_KEY, api_secret=constants.API_SECRET_KEY)
@@ -95,7 +99,7 @@ def cancel_order(asset, order_side):
     client.cancel_order(symbol=asset, orderId=order_id)
     log = constants.CANCEL_ORDER_LOG.format(Now(), asset, order_side.upper())
     info(log)
-    notifier(logText=log)
+    notifier(logText=constants.NOTIFIER_CANCEL_ORDER_LOG.format(order_side.lower(), asset))
     tweet(status=log)
 
 

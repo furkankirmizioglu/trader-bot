@@ -1,7 +1,7 @@
 from logging import basicConfig, INFO, info
 from binance.client import Client
 from binance.exceptions import BinanceAPIException, BinanceOrderException
-from constants import API_KEY, API_SECRET_KEY, STOP_LIMIT_ORDER_LOG, OCO_ORDER_LOG
+from constants import API_KEY, API_SECRET_KEY, STOP_LIMIT_ORDER_LOG, OCO_ORDER_LOG, NOTIFIER_STOP_LIMIT_ORDER_LOG, NOTIFIER_OCO_ORDER_LOG
 from common import tweet, Now, notifier
 from database import order_log
 
@@ -24,7 +24,7 @@ def stop_limit_order(pair, side, quantity, limit, stopLimit):
         orderId = response['orderId']
         info(log)
         tweet(log)
-        notifier(log)
+        notifier(NOTIFIER_STOP_LIMIT_ORDER_LOG.format(side.capitalize(), pair))
         order_log(instance_id=now, orderId=orderId, asset=pair, side=side, quantity=quantity, price=limit,
                   stop_price=stopLimit)
     except (BinanceAPIException, BinanceOrderException) as ex:
@@ -46,6 +46,7 @@ def oco_order(pair, side, quantity, limit, stop, stop_limit):
         log = OCO_ORDER_LOG.format(now, side.upper(), pair, limit, stop_limit)
         info(log)
         tweet(log)
+        notifier(NOTIFIER_OCO_ORDER_LOG.format(side.capitalize(), pair, limit, stop_limit))
         order_log(instance_id=now,
                   orderId=orderId,
                   asset=pair,
