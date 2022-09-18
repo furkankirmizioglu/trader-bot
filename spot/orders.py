@@ -10,7 +10,7 @@ basicConfig(level=INFO)
 
 
 # Submit spot limit orders to Binance.
-def stop_limit_order(pair, side, quantity, limit, stopLimit):
+def stop_limit_order(pair, side, quantity, limit, stopTrigger):
     try:
         now = Now()
         response = client.create_order(symbol=pair,
@@ -18,15 +18,15 @@ def stop_limit_order(pair, side, quantity, limit, stopLimit):
                                        type=Client.ORDER_TYPE_STOP_LOSS_LIMIT,
                                        quantity=quantity,
                                        price=limit,
-                                       stopPrice=stopLimit,
+                                       stopPrice=stopTrigger,
                                        timeInForce=Client.TIME_IN_FORCE_GTC)
         log = STOP_LIMIT_ORDER_LOG.format(now, pair, side.upper(), limit)
         orderId = response['orderId']
         info(log)
         tweet(log)
-        notifier(NOTIFIER_STOP_LIMIT_ORDER_LOG.format(side.capitalize(), pair))
+        notifier(NOTIFIER_STOP_LIMIT_ORDER_LOG.format(side.capitalize(), pair, ))
         order_log(instance_id=now, orderId=orderId, asset=pair, side=side, quantity=quantity, price=limit,
-                  stop_price=stopLimit)
+                  stop_price=stopTrigger)
     except (BinanceAPIException, BinanceOrderException) as ex:
         raise ex
 

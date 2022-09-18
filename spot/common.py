@@ -153,5 +153,4 @@ def notifier(logText):
     )
     # Send a message to the device corresponding to the provided
     # registration token.
-    response = messaging.send(message)
-    info('Successfully sent message:', response)
+    messaging.send(message)

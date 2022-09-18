@@ -130,7 +130,7 @@ def SellFunction(coin, start):
 
 def TrendSellOrder(coin, start):
     # Previous close price - ATR for stop limit.
-    stopLimit = truncate(coin.prevPrice - (coin.atr * 90 / 100), coin.priceDec)
+    stopTrigger = truncate(coin.prevPrice - (coin.atr * 90 / 100), coin.priceDec)
     # Previous price + (ATR / 2) for stop limit.
     limit = truncate(coin.prevPrice - coin.atr, coin.priceDec)
     # Quantity information would fetch from spot wallet.
@@ -139,7 +139,7 @@ def TrendSellOrder(coin, start):
     if not TEST_MODE:
         # Submits limit sell order to Binance. Sends tweet, writes log both ORDER_LOG table and terminal.
         try:
-            stop_limit_order(pair=coin.pair, side=constants.SIDE_SELL, quantity=quantity, limit=limit, stopLimit=stopLimit)
+            stop_limit_order(pair=coin.pair, side=constants.SIDE_SELL, quantity=quantity, limit=limit, stopTrigger=stopTrigger)
             database.set_hasSellOrder(asset=coin.pair, hasSellOrder=True)
             info(constants.PROCESS_TIME_LOG.format(truncate((time() - start), 3)))
         except Exception as ex:
