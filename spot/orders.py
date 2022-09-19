@@ -21,13 +21,15 @@ def stop_limit_order(pair, side, quantity, limit, stopTrigger):
                                            price=limit,
                                            stopPrice=stopTrigger,
                                            timeInForce=Client.TIME_IN_FORCE_GTC)
+
+        orderId = stopResponse['orderId']
+        order_log(instance_id=now, orderId=orderId, asset=pair, side=side, quantity=quantity, price=limit,
+                  stop_price=stopTrigger)
+
     log = constants.STOP_LIMIT_ORDER_LOG.format(now, pair, side.upper(), limit)
-    orderId = stopResponse['orderId']
     info(log)
     tweet(log)
-    notifier(constants.NOTIFIER_STOP_LIMIT_ORDER_LOG.format(side.capitalize(), pair, ))
-    order_log(instance_id=now, orderId=orderId, asset=pair, side=side, quantity=quantity, price=limit,
-              stop_price=stopTrigger)
+    notifier(constants.NOTIFIER_STOP_LIMIT_ORDER_LOG.format(side.capitalize(), pair, limit))
 
 
 # Submit spot oco orders to Binance.
@@ -41,16 +43,15 @@ def oco_order(pair, side, quantity, limit, stop, stop_limit):
                                               stopPrice=stop,
                                               stopLimitPrice=stop_limit,
                                               stopLimitTimeInForce=Client.TIME_IN_FORCE_GTC)
+        orderId = ocoResponse['orders'][0]['orderId']
+        order_log(instance_id=now,
+                  orderId=orderId,
+                  asset=pair,
+                  side=side,
+                  quantity=quantity,
+                  price=limit,
+                  stop_price=stop_limit)
     log = constants.OCO_ORDER_LOG.format(now, side.upper(), pair, limit, stop_limit)
     info(log)
     tweet(log)
     notifier(constants.NOTIFIER_OCO_ORDER_LOG.format(side.capitalize(), pair, limit, stop_limit))
-
-    orderId = ocoResponse['orders'][0]['orderId']
-    order_log(instance_id=now,
-              orderId=orderId,
-              asset=pair,
-              side=side,
-              quantity=quantity,
-              price=limit,
-              stop_price=stop_limit)
