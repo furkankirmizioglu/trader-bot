@@ -2,12 +2,12 @@ import os
 from logging import basicConfig, INFO, info
 from math import trunc
 from datetime import datetime
-
 import tweepy
 from binance.client import Client
 from firebase_admin import messaging, credentials, initialize_app
 import constants
 import database
+import smtplib
 
 path = os.path.dirname(__file__)
 firebase = path + "/data/firebase.json"
@@ -131,6 +131,15 @@ def initializer(pairList):
         hasSellOrder = open_order_control(asset=pair, order_side=constants.SIDE_SELL)
         database.set_hasSellOrder(asset=pair, hasSellOrder=hasSellOrder)
     return has_long
+
+
+def mailSender(exceptionMessage):
+    smtpConn = smtplib.SMTP('smtp.gmail.com', 587)
+    smtpConn.starttls()
+    smtpConn.login(constants.SENDER_EMAIL, constants.EMAIL_PASSWORD)
+    exceptionMessage = constants.EMAIL_FORMAT.format(constants.EMAIL_SUBJECT, exceptionMessage)
+    smtpConn.sendmail(constants.SENDER_EMAIL, constants.RECEIVER_EMAIL, exceptionMessage)
+    smtpConn.quit()
 
 
 # Sends tweet.

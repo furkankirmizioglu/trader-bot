@@ -15,6 +15,10 @@ TWITTER_ACCESS_SECRET_TOKEN = config.get('TwitterAPI', 'access_secret_token')
 
 FIREBASE_DEVICE_KEY = config.get('FirebaseAPI', 'device_key')
 
+SENDER_EMAIL = config.get('Gmail', 'sender_email')
+EMAIL_PASSWORD = config.get('Gmail', 'emailpassword')
+RECEIVER_EMAIL = config.get('Gmail', 'receiver_email')
+
 PRICE_INTERVAL = config.get("TraderBotConfig", "interval")
 PAIRLIST = config.get("TraderBotConfig", "pairlist").split(',')
 TEST_MODE = config.getboolean("TraderBotConfig", "TEST_MODE")
@@ -32,6 +36,9 @@ NOTIFIER_TITLE = "You have a new trade activity"
 NOTIFIER_CANCEL_ORDER_LOG = "Latest {0} order for {1} has canceled."
 NOTIFIER_STOP_LIMIT_ORDER_LOG = "{0} order for {1} has submitted.\nLimit: {2}"
 NOTIFIER_OCO_ORDER_LOG = "{0} order for {1} has submitted.\nLimit: {2}\nStop-Limit: {3}"
+
+EMAIL_FORMAT = 'Subject: {}\n\n{}'
+EMAIL_SUBJECT = "An Exception Occurred!"
 
 BUSD = 'BUSD'
 USDT = 'USDT'

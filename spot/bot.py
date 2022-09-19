@@ -5,13 +5,11 @@
 from logging import info, error, basicConfig, INFO
 from time import time, sleep
 from os import system
-from common import truncate, cancel_order, initializer, wallet, USD_ALLOCATOR, Now
+from common import truncate, cancel_order, initializer, wallet, USD_ALLOCATOR, Now, mailSender
 import constants
 import database
 from coin import Coin
 from orders import oco_order, stop_limit_order
-
-TEST_MODE = constants.TEST_MODE
 
 basicConfig(level=INFO)
 
@@ -25,6 +23,7 @@ def FetchUSDT(pairlist):
             return USDT
         except Exception as ex:
             error(ex)
+            mailSender(ex)
             continue
 
 
@@ -52,8 +51,7 @@ def TrendBuyOrder(coin, start):
 
     # If BUSD amount is less than minimum value ($12) raise an exception and quit.
     if USDT_AMOUNT < constants.MIN_USD:
-        raise Exception(
-            error(constants.MIN_AMOUNT_EXCEPTION_LOG.format(Now(), coin.pair, constants.MIN_USD)))
+        raise Exception(constants.MIN_AMOUNT_EXCEPTION_LOG.format(Now(), coin.pair, constants.MIN_USD))
 
     # Previous close price - ATR for limit buy price.
     limit = truncate(coin.prevPrice - coin.atr, coin.priceDec)
@@ -63,24 +61,18 @@ def TrendBuyOrder(coin, start):
     stop_limit = truncate(coin.prevPrice + coin.atr, coin.priceDec)
     # Quantity would calculate with USDT / stop limit price.
     quantity = truncate(USDT_AMOUNT / stop_limit, coin.qtyDec)
-
-    if not TEST_MODE:
-        try:
-            # Submits order to Binance. Sends tweet, writes the order log both ORDER_LOG table and terminal.
-            oco_order(pair=coin.pair, side=constants.SIDE_BUY, quantity=quantity, limit=limit, stop=stop,
-                      stop_limit=stop_limit)
-            database.set_hasBuyOrder(asset=coin.pair, hasBuyOrder=True)
-            info(constants.PROCESS_TIME_LOG.format(truncate((time() - start), 3)))
-        except Exception as ex:
-            error(ex)
+    # Submits order to Binance. Sends tweet, writes the order log both ORDER_LOG table and terminal.
+    oco_order(pair=coin.pair, side=constants.SIDE_BUY, quantity=quantity, limit=limit, stop=stop,
+              stop_limit=stop_limit)
+    database.set_hasBuyOrder(asset=coin.pair, hasBuyOrder=True)
+    info(constants.PROCESS_TIME_LOG.format(truncate((time() - start), 3)))
 
 
 def BottomBuyOrder(coin, start):
     USDT_AMOUNT = FetchUSDT(constants.PAIRLIST)
 
     if USDT_AMOUNT < constants.MIN_USD:
-        raise Exception(
-            error(constants.MIN_AMOUNT_EXCEPTION_LOG.format(Now(), coin.pair, constants.MIN_USD)))
+        raise Exception(constants.MIN_AMOUNT_EXCEPTION_LOG.format(Now(), coin.pair, constants.MIN_USD))
 
     # Last price - ATR for limit buy price.
     limit = truncate(coin.lastPrice - coin.atr, coin.priceDec)
@@ -92,19 +84,15 @@ def BottomBuyOrder(coin, start):
     quantity = truncate(USDT_AMOUNT / stop_limit, coin.qtyDec)
 
     # Submits order to Binance. Sends tweet, writes the order log both ORDER_LOG table and terminal.
-    if not TEST_MODE:
-        try:
-            oco_order(pair=coin.pair,
-                      side=constants.SIDE_BUY,
-                      quantity=quantity,
-                      limit=limit,
-                      stop=stop,
-                      stop_limit=stop_limit)
-            database.set_hasBuyOrder(asset=coin.pair, hasBuyOrder=True)
-            database.set_order_flag(asset=coin.pair, side=constants.SIDE_SELL, flag=0)
-            info(constants.PROCESS_TIME_LOG.format(truncate((time() - start), 3)))
-        except Exception as ex:
-            error(ex)
+    oco_order(pair=coin.pair,
+              side=constants.SIDE_BUY,
+              quantity=quantity,
+              limit=limit,
+              stop=stop,
+              stop_limit=stop_limit)
+    database.set_hasBuyOrder(asset=coin.pair, hasBuyOrder=True)
+    database.set_order_flag(asset=coin.pair, side=constants.SIDE_SELL, flag=0)
+    info(constants.PROCESS_TIME_LOG.format(truncate((time() - start), 3)))
 
 
 def SellFunction(coin, start):
@@ -136,14 +124,11 @@ def TrendSellOrder(coin, start):
     # Quantity information would fetch from spot wallet.
     quantity = truncate(wallet(asset=coin.pair), coin.qtyDec)
 
-    if not TEST_MODE:
-        # Submits limit sell order to Binance. Sends tweet, writes log both ORDER_LOG table and terminal.
-        try:
-            stop_limit_order(pair=coin.pair, side=constants.SIDE_SELL, quantity=quantity, limit=limit, stopTrigger=stopTrigger)
-            database.set_hasSellOrder(asset=coin.pair, hasSellOrder=True)
-            info(constants.PROCESS_TIME_LOG.format(truncate((time() - start), 3)))
-        except Exception as ex:
-            error(ex)
+    # Submits limit sell order to Binance. Sends tweet, writes log both ORDER_LOG table and terminal.
+    stop_limit_order(pair=coin.pair, side=constants.SIDE_SELL, quantity=quantity, limit=limit,
+                     stopTrigger=stopTrigger)
+    database.set_hasSellOrder(asset=coin.pair, hasSellOrder=True)
+    info(constants.PROCESS_TIME_LOG.format(truncate((time() - start), 3)))
 
 
 def TopSellOrder(coin, start):
@@ -156,16 +141,12 @@ def TopSellOrder(coin, start):
     # Quantity information would fetch from spot wallet.
     quantity = wallet(asset=coin.pair)
 
-    if not TEST_MODE:
-        # Submit sell order to Binance. Sends tweet, writes log both ORDER_LOG table and terminal.
-        try:
-            oco_order(pair=coin.pair, side=constants.SIDE_SELL, quantity=quantity, limit=limit, stop=stop,
-                      stop_limit=stop_limit)
-            database.set_hasSellOrder(asset=coin.pair, hasSellOrder=True)
-            database.set_order_flag(asset=coin.pair, side=constants.SIDE_BUY, flag=0)
-            info(constants.PROCESS_TIME_LOG.format(truncate((time() - start), 3)))
-        except Exception as ex:
-            error(ex)
+    # Submit sell order to Binance. Sends tweet, writes log both ORDER_LOG table and terminal.
+    oco_order(pair=coin.pair, side=constants.SIDE_SELL, quantity=quantity, limit=limit, stop=stop,
+              stop_limit=stop_limit)
+    database.set_hasSellOrder(asset=coin.pair, hasSellOrder=True)
+    database.set_order_flag(asset=coin.pair, side=constants.SIDE_BUY, flag=0)
+    info(constants.PROCESS_TIME_LOG.format(truncate((time() - start), 3)))
 
 
 def CheckHoldFlags(coin):
@@ -207,7 +188,9 @@ def Bot():
                 Trader(pair=pair)
                 sleep(10)
             except Exception as ex:
+                # TODO - > Send e-mail if any exception occurs.
                 error(ex)
+                mailSender(ex)
             else:
                 pass
         # Clears console after each cycle.

@@ -1,58 +1,56 @@
 from logging import basicConfig, INFO, info
 from binance.client import Client
-from binance.exceptions import BinanceAPIException, BinanceOrderException
-from constants import API_KEY, API_SECRET_KEY, STOP_LIMIT_ORDER_LOG, OCO_ORDER_LOG, NOTIFIER_STOP_LIMIT_ORDER_LOG, NOTIFIER_OCO_ORDER_LOG
+import constants
 from common import tweet, Now, notifier
 from database import order_log
 
-client = Client(api_key=API_KEY, api_secret=API_SECRET_KEY)
+client = Client(api_key=constants.API_KEY, api_secret=constants.API_SECRET_KEY)
 basicConfig(level=INFO)
+
+TEST_MODE = constants.TEST_MODE
 
 
 # Submit spot limit orders to Binance.
 def stop_limit_order(pair, side, quantity, limit, stopTrigger):
-    try:
-        now = Now()
-        response = client.create_order(symbol=pair,
-                                       side=side,
-                                       type=Client.ORDER_TYPE_STOP_LOSS_LIMIT,
-                                       quantity=quantity,
-                                       price=limit,
-                                       stopPrice=stopTrigger,
-                                       timeInForce=Client.TIME_IN_FORCE_GTC)
-        log = STOP_LIMIT_ORDER_LOG.format(now, pair, side.upper(), limit)
-        orderId = response['orderId']
-        info(log)
-        tweet(log)
-        notifier(NOTIFIER_STOP_LIMIT_ORDER_LOG.format(side.capitalize(), pair, ))
-        order_log(instance_id=now, orderId=orderId, asset=pair, side=side, quantity=quantity, price=limit,
-                  stop_price=stopTrigger)
-    except (BinanceAPIException, BinanceOrderException) as ex:
-        raise ex
+    now = Now()
+    if not TEST_MODE:
+        stopResponse = client.create_order(symbol=pair,
+                                           side=side,
+                                           type=Client.ORDER_TYPE_STOP_LOSS_LIMIT,
+                                           quantity=quantity,
+                                           price=limit,
+                                           stopPrice=stopTrigger,
+                                           timeInForce=Client.TIME_IN_FORCE_GTC)
+    log = constants.STOP_LIMIT_ORDER_LOG.format(now, pair, side.upper(), limit)
+    orderId = stopResponse['orderId']
+    info(log)
+    tweet(log)
+    notifier(constants.NOTIFIER_STOP_LIMIT_ORDER_LOG.format(side.capitalize(), pair, ))
+    order_log(instance_id=now, orderId=orderId, asset=pair, side=side, quantity=quantity, price=limit,
+              stop_price=stopTrigger)
 
 
 # Submit spot oco orders to Binance.
 def oco_order(pair, side, quantity, limit, stop, stop_limit):
     now = Now()
-    try:
-        response = client.create_oco_order(symbol=pair,
-                                           side=side,
-                                           quantity=quantity,
-                                           price=limit,
-                                           stopPrice=stop,
-                                           stopLimitPrice=stop_limit,
-                                           stopLimitTimeInForce=Client.TIME_IN_FORCE_GTC)
-        orderId = response['orders'][0]['orderId']
-        log = OCO_ORDER_LOG.format(now, side.upper(), pair, limit, stop_limit)
-        info(log)
-        tweet(log)
-        notifier(NOTIFIER_OCO_ORDER_LOG.format(side.capitalize(), pair, limit, stop_limit))
-        order_log(instance_id=now,
-                  orderId=orderId,
-                  asset=pair,
-                  side=side,
-                  quantity=quantity,
-                  price=limit,
-                  stop_price=stop_limit)
-    except (BinanceAPIException, BinanceOrderException) as ex:
-        raise ex
+    if not TEST_MODE:
+        ocoResponse = client.create_oco_order(symbol=pair,
+                                              side=side,
+                                              quantity=quantity,
+                                              price=limit,
+                                              stopPrice=stop,
+                                              stopLimitPrice=stop_limit,
+                                              stopLimitTimeInForce=Client.TIME_IN_FORCE_GTC)
+    log = constants.OCO_ORDER_LOG.format(now, side.upper(), pair, limit, stop_limit)
+    info(log)
+    tweet(log)
+    notifier(constants.NOTIFIER_OCO_ORDER_LOG.format(side.capitalize(), pair, limit, stop_limit))
+
+    orderId = ocoResponse['orders'][0]['orderId']
+    order_log(instance_id=now,
+              orderId=orderId,
+              asset=pair,
+              side=side,
+              quantity=quantity,
+              price=limit,
+              stop_price=stop_limit)
