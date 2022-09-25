@@ -133,13 +133,17 @@ def initializer(pairList):
     return has_long
 
 
-def mailSender(exceptionMessage):
-    smtpConn = smtplib.SMTP('smtp.gmail.com', 587)
-    smtpConn.starttls()
-    smtpConn.login(constants.SENDER_EMAIL, constants.EMAIL_PASSWORD)
-    exceptionMessage = constants.EMAIL_FORMAT.format(constants.EMAIL_SUBJECT, exceptionMessage)
-    smtpConn.sendmail(constants.SENDER_EMAIL, constants.RECEIVER_EMAIL, exceptionMessage)
-    smtpConn.quit()
+def emailSender(exceptionMessage):
+    try:
+        smtpConn = smtplib.SMTP('smtp.gmail.com', 587)
+        smtpConn.starttls()
+        smtpConn.login(constants.SENDER_EMAIL, constants.EMAIL_PASSWORD)
+        exceptionMessage = constants.EMAIL_FORMAT.format(constants.EMAIL_SUBJECT, exceptionMessage)
+        smtpConn.sendmail(constants.SENDER_EMAIL, constants.RECEIVER_EMAIL, exceptionMessage)
+        smtpConn.quit()
+    except Exception as ex:
+        info(ex)
+        pass
 
 
 # Sends tweet.
