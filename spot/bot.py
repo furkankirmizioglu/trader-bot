@@ -2,7 +2,7 @@
 # TIME PERIOD IS 2 HOURS
 # USES Z SCORE, MAVILIMW AND AVERAGE TRUE RANGE INDICATORS
 # TRANSACTIONS WILL BE TWEETED.
-from logging import info, error, basicConfig, INFO
+from logging import info, error
 from time import time, sleep
 from os import system
 from common import truncate, cancel_order, initializer, wallet, USD_ALLOCATOR, Now, mailSender
@@ -10,8 +10,6 @@ import constants
 import database
 from coin import Coin
 from orders import oco_order, stop_limit_order
-
-basicConfig(level=INFO)
 
 
 def FetchUSDT(pairlist):
@@ -188,7 +186,6 @@ def Bot():
                 Trader(pair=pair)
                 sleep(10)
             except Exception as ex:
-                # TODO - > Send e-mail if any exception occurs.
                 error(ex)
                 mailSender(ex)
             else:
@@ -197,6 +194,5 @@ def Bot():
         system('clear')
 
 
-log = constants.START_LOG.format(Now(), ", ".join(constants.PAIRLIST))
-info(log)
+info(constants.START_LOG.format(Now(), ", ".join(constants.PAIRLIST)))
 Bot()

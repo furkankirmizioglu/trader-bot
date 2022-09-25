@@ -125,15 +125,10 @@ def initializer(pairList):
         database.set_islong(asset=pair, isLong=isLong)
         if isLong:
             has_long.append(pair)
-
-        hasBuyOrder = open_order_control(asset=pair, order_side=constants.SIDE_BUY)
-        database.set_hasBuyOrder(asset=pair, hasBuyOrder=hasBuyOrder)
-        hasSellOrder = open_order_control(asset=pair, order_side=constants.SIDE_SELL)
-        database.set_hasSellOrder(asset=pair, hasSellOrder=hasSellOrder)
     return has_long
 
 
-def emailSender(exceptionMessage):
+def mailSender(exceptionMessage):
     try:
         smtpConn = smtplib.SMTP('smtp.gmail.com', 587)
         smtpConn.starttls()
