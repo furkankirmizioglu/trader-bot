@@ -41,7 +41,7 @@ def mavilimw(close):
     return avg6
 
 
-def mavilimw_bullandbear(close, truncate):
+def mavilimBullBear(close, truncate):
     mavilimw_array = mavilimw(close=close)
     # Removing the first len(close) - length(mavilimw) of elements so its size will be same with MAVILIMW array.
     close = close[len(close) - len(mavilimw_array):]

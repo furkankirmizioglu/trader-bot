@@ -7,7 +7,7 @@ from binance.client import Client
 from firebase_admin import messaging, credentials, initialize_app
 import constants
 import database
-import smtplib
+from smtplib import SMTP
 
 path = os.path.dirname(__file__)
 firebase = path + "/data/firebase.json"
@@ -52,7 +52,7 @@ def decimal_place(asset):
 
 
 # Retrieves last 1000 of price movements.
-def price_action(symbol, interval):
+def priceActions(symbol, interval):
     first_set = client.get_klines(symbol=symbol, interval=interval, limit=1000)
     return first_set
 
@@ -67,36 +67,47 @@ def wallet(asset):
         return float(data['free'])
 
 
-def get_min_qty(asset):
+def getMinimumQuantity(asset):
     qty_info = client.get_symbol_info(asset)
     min_qty = float(qty_info['filters'][2]['minQty'])
     return min_qty
 
 
 # Checks if user has purchased the asset.
-def position_control(asset):
-    min_qty = database.get_minQty(asset=asset)
-    return True if wallet(asset=asset) > min_qty else False
+def checkPosition(asset):
+    min_qty = database.getMinimumQuantity(asset=asset)
+    if wallet(asset=asset) > min_qty:
+        database.setIsLong(asset=asset, isLong=True)
+        return True
+    else:
+        database.setIsLong(asset=asset, isLong=False)
+        return False
 
 
 # Checks if an order is already submitted.
-def open_order_control(asset, order_side):
-    position = client.get_open_orders(symbol=asset)
-    if len(position) == 0:
-        return False
-    elif len(position) > 0:
-        for x in position:
-            if x['side'] == order_side:
-                return True
-            else:
-                return False
+def checkOpenOrder(asset):
+    openOrdersList = client.get_open_orders(symbol=asset)
+    if len(openOrdersList) == 0:
+        database.setHasBuyOrder(asset=asset, hasBuyOrder=False)
+        database.setHasSellOrder(asset=asset, hasSellOrder=False)
+        return False, False
+    elif len(openOrdersList) > 0:
+        for x in openOrdersList:
+            if x['side'] == constants.SIDE_BUY:
+                database.setHasBuyOrder(asset=asset, hasBuyOrder=True)
+                database.setHasSellOrder(asset=asset, hasSellOrder=False)
+                return True, False
+            elif x['side'] == constants.SIDE_SELL:
+                database.setHasBuyOrder(asset=asset, hasBuyOrder=False)
+                database.setHasSellOrder(asset=asset, hasSellOrder=True)
+                return False, True
 
 
 # Cancels given order.
-def cancel_order(asset, order_side):
-    orders = client.get_open_orders(symbol=asset)
-    order_id = orders[-1]['orderId']
+def cancelOrder(asset, order_side):
+    order_id = database.getLatestOrder(pair=asset)
     client.cancel_order(symbol=asset, orderId=order_id)
+    database.removeOrderLog(orderId=order_id)
     log = constants.CANCEL_ORDER_LOG.format(Now(), asset, order_side.upper())
     info(log)
     notifier(logText=constants.NOTIFIER_CANCEL_ORDER_LOG.format(order_side.lower(), asset))
@@ -105,11 +116,11 @@ def cancel_order(asset, order_side):
 
 # Sets amount of purchasing dynamically.
 def USD_ALLOCATOR(pairList):
-    priceDec, qtyDec = database.get_decimals(asset=constants.BUSD + constants.USDT)
+    priceDec, qtyDec = database.getDecimalValues(asset=constants.BUSD + constants.USDT)
     divider = 0
     for x in pairList:
-        has_asset = database.get_islong(x)
-        has_order = database.get_hasBuyOrder(asset=x)
+        has_asset = database.getIsLong(x)
+        has_order = database.getHasBuyOrder(asset=x)
         if not has_asset and not has_order:
             divider += 1
     return truncate(wallet(constants.BUSD) / divider, priceDec) if divider > 0 else truncate(wallet(constants.BUSD),
@@ -117,20 +128,14 @@ def USD_ALLOCATOR(pairList):
 
 
 def initializer(pairList):
-    has_long = []
-    database.init_data(asset=constants.BUSD + constants.USDT)
+    database.initDB(asset=constants.BUSD + constants.USDT)
     for pair in pairList:
-        database.init_data(asset=pair)
-        isLong = position_control(asset=pair)
-        database.set_islong(asset=pair, isLong=isLong)
-        if isLong:
-            has_long.append(pair)
-    return has_long
+        database.initDB(asset=pair)
 
 
 def mailSender(exceptionMessage):
     try:
-        smtpConn = smtplib.SMTP('smtp.gmail.com', 587)
+        smtpConn = SMTP('smtp.gmail.com', 587)
         smtpConn.starttls()
         smtpConn.login(constants.SENDER_EMAIL, constants.EMAIL_PASSWORD)
         exceptionMessage = constants.EMAIL_FORMAT.format(constants.EMAIL_SUBJECT, exceptionMessage)
