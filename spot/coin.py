@@ -2,9 +2,9 @@ from numpy import array
 from scipy.stats import stats
 import common
 from constants import PRICE_INTERVAL
-from database import getHoldFlags, getDecimalValues
 from indicators import mavilimBullBear, atr
 import asyncio
+import database
 
 
 class Coin:
@@ -20,19 +20,24 @@ class Coin:
     mavilimw = 0
     top = 0
     bottom = 0
-    buyFlag = ""
-    sellFlag = ""
+    buyHold = ""
+    sellHold = ""
     hasBuyOrder = None
     hasSellOrder = None
 
-    async def isLongAndOpenOrders(self):
-        self.hasBuyOrder, self.hasSellOrder = common.checkOpenOrder(asset=self.pair)
-        self.isLong = common.checkPosition(asset=self.pair)
-        self.buyFlag, self.sellFlag = getHoldFlags(asset=self.pair)
+    async def isLongAndOpenOrders(self, queryResponse):
+        self.hasBuyOrder, self.hasSellOrder = common.checkOpenOrder(pair=self.pair)
+        self.isLong = common.checkPosition(pair=self.pair)
+        self.buyHold = queryResponse[5]
+        self.sellHold = queryResponse[6]
+        COLUMNS = ['IS_LONG', 'HAS_BUY_ORDER', 'HAS_SELL_ORDER']
+        database.bulkUpdatePrmOrder(pair=self.pair, columns=COLUMNS,
+                                    values=(self.isLong, self.hasBuyOrder, self.hasSellOrder))
 
-    async def pricesAndValues(self):
-        self.priceDec, self.qtyDec = getDecimalValues(asset=self.pair)
-        self.candles = common.priceActions(symbol=self.pair, interval=PRICE_INTERVAL)
+    async def pricesAndValues(self, queryResponse):
+        self.priceDec = queryResponse[1]
+        self.qtyDec = queryResponse[2]
+        self.candles = common.priceActions(pair=self.pair, interval=PRICE_INTERVAL)
         self.atr = atr(klines=self.candles)
         self.candles = array([float(x[4]) for x in self.candles])
         self.mavilimw, self.top, self.bottom = mavilimBullBear(close=self.candles, truncate=self.priceDec)
@@ -42,8 +47,9 @@ class Coin:
         del self.candles
 
     async def mainTask(self):
-        task1 = asyncio.create_task(self.isLongAndOpenOrders())
-        task2 = asyncio.create_task(self.pricesAndValues())
+        query = database.selectAllFromPrmOrder(pair=self.pair)[-1]
+        task1 = asyncio.create_task(self.isLongAndOpenOrders(query))
+        task2 = asyncio.create_task(self.pricesAndValues(query))
         await task1
         await task2
 

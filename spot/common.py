@@ -36,8 +36,8 @@ def truncate(number, decimals):
 
 
 # Sets decimal values based on selected asset.
-def decimal_place(asset):
-    symbolInfo = client.get_symbol_info(asset)
+def decimal_place(pair):
+    symbolInfo = client.get_symbol_info(pair)
     min_price = str(symbolInfo['filters'][0]['minPrice'])
     min_qty = str(symbolInfo['filters'][2]['minQty'])
     start = '0.'
@@ -52,75 +52,69 @@ def decimal_place(asset):
 
 
 # Retrieves last 1000 of price movements.
-def priceActions(symbol, interval):
-    first_set = client.get_klines(symbol=symbol, interval=interval, limit=1000)
+def priceActions(pair, interval):
+    first_set = client.get_klines(symbol=pair, interval=interval, limit=1000)
     return first_set
 
 
 # Fetches account's balance from Binance wallet.
-def wallet(asset):
-    if asset != constants.BUSD:
-        data = client.get_asset_balance(asset=asset.replace(constants.BUSD, ""))
+def wallet(pair):
+    if pair != constants.BUSD:
+        data = client.get_asset_balance(asset=pair.replace(constants.BUSD, ""))
         return float(data['free']) + float(data['locked'])
     else:
-        data = client.get_asset_balance(asset=asset)
+        data = client.get_asset_balance(asset=pair)
         return float(data['free'])
 
 
-def getMinimumQuantity(asset):
-    qty_info = client.get_symbol_info(asset)
+def getMinimumQuantity(pair):
+    qty_info = client.get_symbol_info(pair)
     min_qty = float(qty_info['filters'][2]['minQty'])
     return min_qty
 
 
-# Checks if user has purchased the asset.
-def checkPosition(asset):
-    min_qty = database.getMinimumQuantity(asset=asset)
-    if wallet(asset=asset) > min_qty:
-        database.setIsLong(asset=asset, isLong=True)
-        return True
+# Checks if user has given asset.
+# 1 -> True | 0 -> False
+def checkPosition(pair):
+    min_qty = database.getMinimumQuantity(pair=pair)
+    if wallet(pair=pair) > min_qty:
+        return 1
     else:
-        database.setIsLong(asset=asset, isLong=False)
-        return False
+        return 0
 
 
 # Checks if an order is already submitted.
-def checkOpenOrder(asset):
-    openOrdersList = client.get_open_orders(symbol=asset)
+# 1 = True | 2 = False
+def checkOpenOrder(pair):
+    openOrdersList = client.get_open_orders(symbol=pair)
     if len(openOrdersList) == 0:
-        database.setHasBuyOrder(asset=asset, hasBuyOrder=False)
-        database.setHasSellOrder(asset=asset, hasSellOrder=False)
-        return False, False
+        return 0, 0
     elif len(openOrdersList) > 0:
         for x in openOrdersList:
             if x['side'] == constants.SIDE_BUY:
-                database.setHasBuyOrder(asset=asset, hasBuyOrder=True)
-                database.setHasSellOrder(asset=asset, hasSellOrder=False)
-                return True, False
+                return 1, 0
             elif x['side'] == constants.SIDE_SELL:
-                database.setHasBuyOrder(asset=asset, hasBuyOrder=False)
-                database.setHasSellOrder(asset=asset, hasSellOrder=True)
-                return False, True
+                return 0, 1
 
 
 # Cancels given order.
-def cancelOrder(asset, order_side):
-    order_id = database.getLatestOrder(pair=asset)
-    client.cancel_order(symbol=asset, orderId=order_id)
-    database.removeOrderLog(orderId=order_id)
-    log = constants.CANCEL_ORDER_LOG.format(Now(), asset, order_side.upper())
+def cancelOrder(pair, order_side):
+    order_id = database.getLatestOrderFromOrderLog(pair=pair)
+    client.cancel_order(symbol=pair, orderId=order_id)
+    database.removeLogFromOrderLog(pair=pair, orderId=order_id)
+    log = constants.CANCEL_ORDER_LOG.format(Now(), pair, order_side.upper())
     info(log)
-    notifier(logText=constants.NOTIFIER_CANCEL_ORDER_LOG.format(order_side.lower(), asset))
+    notifier(logText=constants.NOTIFIER_CANCEL_ORDER_LOG.format(order_side.lower(), pair))
     tweet(status=log)
 
 
 # Sets amount of purchasing dynamically.
 def USD_ALLOCATOR(pairList):
-    priceDec, qtyDec = database.getDecimalValues(asset=constants.BUSD + constants.USDT)
+    priceDec, qtyDec = database.getDecimals(pair=constants.BUSD + constants.USDT)
     divider = 0
-    for x in pairList:
-        has_asset = database.getIsLong(x)
-        has_order = database.getHasBuyOrder(asset=x)
+    for pair in pairList:
+        has_asset = database.getIsLong(pair)
+        has_order = database.getHasBuyOrder(pair=pair)
         if not has_asset and not has_order:
             divider += 1
     return truncate(wallet(constants.BUSD) / divider, priceDec) if divider > 0 else truncate(wallet(constants.BUSD),
@@ -128,9 +122,15 @@ def USD_ALLOCATOR(pairList):
 
 
 def initializer(pairList):
-    database.initDB(asset=constants.BUSD + constants.USDT)
+    database.initPrmOrderTable(pair=constants.BUSD + constants.USDT)
     for pair in pairList:
-        database.initDB(asset=pair)
+        database.initPrmOrderTable(pair=pair)
+    for pair in pairList:
+        isLong = checkPosition(pair)
+        hasBuyOrder, hasSellOrder = checkOpenOrder(pair=pair)
+        columns = ['IS_LONG', 'HAS_BUY_ORDER', 'HAS_SELL_ORDER']
+        queryParameters = (isLong, hasBuyOrder, hasSellOrder)
+        database.bulkUpdatePrmOrder(pair=pair, columns=columns, values=queryParameters)
 
 
 def mailSender(exceptionMessage):

@@ -2,7 +2,7 @@ from logging import basicConfig, INFO, info
 from binance.client import Client
 import constants
 from common import tweet, Now, notifier
-from database import insertOrderLog
+from database import insertIntoOrderLog
 
 client = Client(api_key=constants.API_KEY, api_secret=constants.API_SECRET_KEY)
 basicConfig(level=INFO)
@@ -23,8 +23,8 @@ def stopLimitOrder(pair, side, quantity, limit, stopTrigger):
                                                 timeInForce=Client.TIME_IN_FORCE_GTC)
 
         orderId = stopLimitResponse['orderId']
-        insertOrderLog(instance_id=now, orderId=orderId, asset=pair, side=side, quantity=quantity, price=limit,
-                       stop_price=stopTrigger)
+        orderLogParameters = (orderId, now, pair, side, quantity, limit, stopTrigger)
+        insertIntoOrderLog(orderLogParameters)
 
     log = constants.STOP_LIMIT_ORDER_LOG.format(now, pair, side.upper(), limit)
     info(log)
@@ -44,13 +44,9 @@ def oco_order(pair, side, quantity, limit, stop, stop_limit):
                                               stopLimitPrice=stop_limit,
                                               stopLimitTimeInForce=Client.TIME_IN_FORCE_GTC)
         orderId = ocoResponse['orders'][0]['orderId']
-        insertOrderLog(instance_id=now,
-                       orderId=orderId,
-                       asset=pair,
-                       side=side,
-                       quantity=quantity,
-                       price=limit,
-                       stop_price=stop_limit)
+
+        orderLogParameters = (orderId, now, pair, side, quantity, limit, stop_limit)
+        insertIntoOrderLog(orderLogParameters)
     log = constants.OCO_ORDER_LOG.format(now, side.upper(), pair, limit, stop_limit)
     info(log)
     tweet(log)

@@ -5,9 +5,9 @@
 from logging import info, error
 from time import sleep, perf_counter
 from os import system
+import database
 from common import truncate, cancelOrder, initializer, wallet, USD_ALLOCATOR, Now, mailSender
 import constants
-import database
 from coin import Coin
 from orders import oco_order, stopLimitOrder
 import multiprocessing
@@ -47,7 +47,7 @@ def TrendBuyOrder(coin):
     # Submits order to Binance. Sends tweet, writes the order log both ORDER_LOG table and terminal.
     oco_order(pair=coin.pair, side=constants.SIDE_BUY, quantity=quantity, limit=limit, stop=stop,
               stop_limit=stop_limit)
-    database.setHasBuyOrder(asset=coin.pair, hasBuyOrder=True)
+    database.updatePrmOrder(pair=coin.pair, column='HAS_BUY_ORDER', value=1)
 
 
 def BottomBuyOrder(coin):
@@ -72,8 +72,7 @@ def BottomBuyOrder(coin):
               limit=limit,
               stop=stop,
               stop_limit=stop_limit)
-    database.setHasBuyOrder(asset=coin.pair, hasBuyOrder=True)
-    database.setOrderFlag(asset=coin.pair, side=constants.SIDE_SELL, flag=0)
+    database.bulkUpdatePrmOrder(pair=coin.pair, columns=['HAS_BUY_ORDER', 'SELL_HOLD'], values=(1, 1))
 
 
 def TrendSellOrder(coin):
@@ -82,12 +81,12 @@ def TrendSellOrder(coin):
     # Previous price + (ATR / 2) for stop limit.
     limit = truncate(coin.prevPrice - coin.atr, coin.priceDec)
     # Quantity information would fetch from spot wallet.
-    quantity = truncate(wallet(asset=coin.pair), coin.qtyDec)
+    quantity = truncate(wallet(pair=coin.pair), coin.qtyDec)
 
     # Submits limit sell order to Binance. Sends tweet, writes log both ORDER_LOG table and terminal.
     stopLimitOrder(pair=coin.pair, side=constants.SIDE_SELL, quantity=quantity, limit=limit,
                    stopTrigger=stopTrigger)
-    database.setHasSellOrder(asset=coin.pair, hasSellOrder=True)
+    database.updatePrmOrder(pair=coin.pair, column='HAS_SELL_ORDER', value=1)
 
 
 def TopSellOrder(coin):
@@ -98,21 +97,20 @@ def TopSellOrder(coin):
     # Last price - (ATR / 2) for stop limit level.
     stop_limit = truncate(coin.lastPrice - coin.atr / 2, coin.priceDec)
     # Quantity information would fetch from spot wallet.
-    quantity = wallet(asset=coin.pair)
+    quantity = wallet(pair=coin.pair)
 
     # Submit sell order to Binance. Sends tweet, writes log both ORDER_LOG table and terminal.
     oco_order(pair=coin.pair, side=constants.SIDE_SELL, quantity=quantity, limit=limit, stop=stop,
               stop_limit=stop_limit)
-    database.setHasSellOrder(asset=coin.pair, hasSellOrder=True)
-    database.setOrderFlag(asset=coin.pair, side=constants.SIDE_BUY, flag=0)
+    database.bulkUpdatePrmOrder(pair=coin.pair, columns=['HAS_SELL_ORDER', 'BUY_HOLD'], values=(1, 1))
 
 
 def BuyFunction(coin):
     # If there is already a buy order but buy condition has disappeared, the buy order will be canceled.
     if coin.hasBuyOrder:
-        if coin.prevPrice < coin.mavilimw and coin.sellFlag == 1:
-            cancelOrder(asset=coin.pair, order_side=constants.SIDE_BUY)
-            database.setHasBuyOrder(asset=coin.pair, hasBuyOrder=False)
+        if coin.prevPrice < coin.mavilimw and coin.sellHold == 0:
+            cancelOrder(pair=coin.pair, order_side=constants.SIDE_BUY)
+            database.updatePrmOrder(pair=coin.pair, column='HAS_BUY_ORDER', value=0)
         else:
             pass
 
@@ -129,9 +127,9 @@ def BuyFunction(coin):
 def SellFunction(coin):
     # If there is already a sell order but sell condition has disappeared, cancel the sell order.
     if coin.hasSellOrder:
-        if coin.prevPrice > coin.mavilimw and coin.buyFlag == 1:
-            cancelOrder(asset=coin.pair, order_side=constants.SIDE_SELL)
-            database.setHasSellOrder(asset=coin.pair, hasSellOrder=False)
+        if coin.prevPrice > coin.mavilimw and coin.buyHold == 0:
+            cancelOrder(pair=coin.pair, order_side=constants.SIDE_SELL)
+            database.updatePrmOrder(pair=coin.pair, column='HAS_SELL_ORDER', value=0)
         else:
             pass
 
@@ -147,11 +145,11 @@ def SellFunction(coin):
 
 def CheckHoldFlags(coin):
     # If previous close price crosses up mavilim and sell flag is 0 then set sell flag to 1.
-    if coin.prevPrice > coin.mavilimw and coin.sellFlag == 0:
-        database.setOrderFlag(asset=coin.pair, side=constants.SIDE_SELL, flag=1)
+    if coin.prevPrice > coin.mavilimw and coin.sellHold == 1:
+        database.updatePrmOrder(pair=coin.pair, column='SELL_HOLD', value=0)
     # If previous close price crosses down mavilim and buy flag is 0 then buy flag to 1
-    elif coin.prevPrice < coin.mavilimw and coin.buyFlag == 0:
-        database.setOrderFlag(asset=coin.pair, side=constants.SIDE_BUY, flag=1)
+    elif coin.prevPrice < coin.mavilimw and coin.buyHold == 1:
+        database.updatePrmOrder(pair=coin.pair, column='BUY_HOLD', value=0)
 
 
 def Trader(pair):
@@ -160,13 +158,13 @@ def Trader(pair):
         info(constants.INITIAL_LOG.format(Now(), coin.pair, coin.lastPrice, coin.zScore, coin.top, coin.bottom))
 
         # BUY CONDITIONS.
-        # If didn't purchase the asset before and buy flag equals 1, then enter this condition.
-        if not coin.isLong and coin.buyFlag == 1:
+        # If didn't purchase the asset before and buy flag equals 0, then enter this condition.
+        if not coin.isLong and coin.buyHold == 0:
             BuyFunction(coin=coin)
 
         # SELL CONDITIONS.
-        # If already purchased the asset and sell flag equals 1, then enter this condition.
-        if coin.isLong and coin.sellFlag == 1:
+        # If already purchased the asset and sell flag equals 0, then enter this condition.
+        if coin.isLong and coin.sellHold == 0:
             SellFunction(coin=coin)
 
         CheckHoldFlags(coin=coin)
