@@ -2,6 +2,7 @@
 # TIME PERIOD IS 2 HOURS
 # USES Z SCORE, MAVILIMW AND AVERAGE TRUE RANGE INDICATORS
 # TRANSACTIONS WILL BE TWEETED.
+from binance.client import BinanceAPIException
 from logging import info, error
 from time import sleep, perf_counter
 from os import system
@@ -168,6 +169,12 @@ def Trader(pair):
             SellFunction(coin=coin)
 
         CheckHoldFlags(coin=coin)
+    except BinanceAPIException as e:
+        if e.code == -1021:     # If exception is about a timestamp issue, ignore and don't notify that exception.
+            pass
+        else:
+            error(e)
+            mailSender(traceback.format_exc())
     except Exception as ex:
         error(ex)
         mailSender(traceback.format_exc())
