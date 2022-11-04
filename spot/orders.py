@@ -44,10 +44,30 @@ def oco_order(pair, side, quantity, limit, stop, stop_limit):
                                               stopLimitPrice=stop_limit,
                                               stopLimitTimeInForce=Client.TIME_IN_FORCE_GTC)
         orderId = ocoResponse['orders'][0]['orderId']
-
         orderLogParameters = (orderId, now, pair, side, quantity, limit, stop_limit)
         insertIntoOrderLog(orderLogParameters)
+
     log = constants.OCO_ORDER_LOG.format(now, side.upper(), pair, limit, stop_limit)
     info(log)
     tweet(log)
     notifier(constants.NOTIFIER_OCO_ORDER_LOG.format(side.capitalize(), pair, limit, stop_limit))
+
+
+def TrailingStopOrder(pair, side, quantity, activationPrice):
+    now = Now()
+    if not TEST_MODE:
+        tsoResponse = client.create_order(symbol=pair,
+                                          side=side,
+                                          quantity=quantity,
+                                          type=Client.ORDER_TYPE_TAKE_PROFIT_LIMIT,
+                                          price=activationPrice,
+                                          trailingDelta=300,
+                                          timeInForce=Client.TIME_IN_FORCE_GTC)
+        orderId = tsoResponse['orderId']
+        orderLogParameters = (orderId, now, pair, side, quantity, activationPrice, 0)
+        insertIntoOrderLog(orderLogParameters)
+
+    log = constants.TRAILING_ORDER_LOG.format(now, side.upper(), pair, activationPrice)
+    info(log)
+    tweet(log)
+    notifier(constants.NOTIFIER_TRAILING_ORDER_LOG.format(side.capitalize(), pair, activationPrice))

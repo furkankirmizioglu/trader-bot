@@ -10,7 +10,7 @@ import database
 from common import truncate, cancelOrder, initializer, wallet, USD_ALLOCATOR, Now, mailSender
 import constants
 from coin import Coin
-from orders import oco_order, stopLimitOrder
+from orders import oco_order, stopLimitOrder, TrailingStopOrder
 import multiprocessing
 import traceback
 
@@ -57,22 +57,14 @@ def BottomBuyOrder(coin):
     if USDT_AMOUNT < constants.MIN_USD:
         raise Exception(constants.MIN_AMOUNT_EXCEPTION_LOG.format(Now(), coin.pair, constants.MIN_USD))
 
-    # Last price - ATR for limit buy price.
-    limit = truncate(coin.lastPrice - coin.atr, coin.priceDec)
-    # Last price + (ATR * 45 / 100) for trigger.
-    stop = truncate(coin.lastPrice + (coin.atr * 45 / 100), coin.priceDec)
-    # Last price + (ATR / 2) for stop-limit price.
-    stop_limit = truncate(coin.lastPrice + coin.atr / 2, coin.priceDec)
-    # Quantity information would calculate with USDT / stop-limit price.
-    quantity = truncate(USDT_AMOUNT / stop_limit, coin.qtyDec)
+    # Quantity information would calculate with USDT / last price.
+    quantity = truncate(USDT_AMOUNT / coin.lastPrice, coin.qtyDec)
 
     # Submits order to Binance. Sends tweet, writes the order log both ORDER_LOG table and terminal.
-    oco_order(pair=coin.pair,
-              side=constants.SIDE_BUY,
-              quantity=quantity,
-              limit=limit,
-              stop=stop,
-              stop_limit=stop_limit)
+    TrailingStopOrder(pair=coin.pair,
+                      side=constants.SIDE_BUY,
+                      quantity=quantity,
+                      activationPrice=coin.lastPrice)
     database.bulkUpdatePrmOrder(pair=coin.pair, columns=['HAS_BUY_ORDER', 'SELL_HOLD'], values=(1, 1))
 
 
@@ -91,18 +83,15 @@ def TrendSellOrder(coin):
 
 
 def TopSellOrder(coin):
-    # Last price + ATR for limit sell level.
-    limit = truncate(coin.lastPrice + coin.atr, coin.priceDec)
-    # Last price - (ATR * 45 / 100) for stop trigger level.
-    stop = truncate(coin.lastPrice - (coin.atr * 45 / 100), coin.priceDec)
-    # Last price - (ATR / 2) for stop limit level.
-    stop_limit = truncate(coin.lastPrice - coin.atr / 2, coin.priceDec)
+
     # Quantity information would fetch from spot wallet.
     quantity = truncate(wallet(pair=coin.pair), coin.qtyDec)
-
     # Submit sell order to Binance. Sends tweet, writes log both ORDER_LOG table and terminal.
-    oco_order(pair=coin.pair, side=constants.SIDE_SELL, quantity=quantity, limit=limit, stop=stop,
-              stop_limit=stop_limit)
+    TrailingStopOrder(pair=coin.pair,
+                      side=constants.SIDE_SELL,
+                      quantity=quantity,
+                      activationPrice=coin.lastPrice)
+
     database.bulkUpdatePrmOrder(pair=coin.pair, columns=['HAS_SELL_ORDER', 'BUY_HOLD'], values=(1, 1))
 
 
@@ -170,7 +159,7 @@ def Trader(pair):
 
         CheckHoldFlags(coin=coin)
     except BinanceAPIException as e:
-        if e.code == -1021:     # If exception is about a timestamp issue, ignore and don't notify that exception.
+        if e.code == -1021:  # If exception is about a timestamp issue, ignore and don't notify that exception.
             pass
         else:
             error(e)
