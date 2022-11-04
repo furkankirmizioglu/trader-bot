@@ -98,7 +98,7 @@ def TopSellOrder(coin):
     # Last price - (ATR / 2) for stop limit level.
     stop_limit = truncate(coin.lastPrice - coin.atr / 2, coin.priceDec)
     # Quantity information would fetch from spot wallet.
-    quantity = wallet(pair=coin.pair)
+    quantity = truncate(wallet(pair=coin.pair), coin.qtyDec)
 
     # Submit sell order to Binance. Sends tweet, writes log both ORDER_LOG table and terminal.
     oco_order(pair=coin.pair, side=constants.SIDE_SELL, quantity=quantity, limit=limit, stop=stop,
