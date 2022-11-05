@@ -1,3 +1,4 @@
+import os
 from logging import info
 import math
 from datetime import datetime, timedelta
@@ -6,12 +7,17 @@ from unittest import TestCase
 
 import tweepy
 from binance.client import Client, BinanceAPIException
-from firebase_admin import messaging
+from firebase_admin import messaging, credentials, initialize_app
 
 import database as database
 import constants
 
 client = Client(api_key=constants.BINANCE_FUTURES_API_KEY, api_secret=constants.BINANCE_FUTURES_API_SECRET_KEY)
+
+path = os.path.dirname(__file__)
+firebase = path + "/data/firebase.json"
+firebase_cred = credentials.Certificate(firebase)
+firebase_app = initialize_app(firebase_cred)
 
 
 def Now():
