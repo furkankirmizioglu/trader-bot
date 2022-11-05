@@ -2,156 +2,145 @@
 # TIME PERIOD IS 1 HOUR
 # USES Z SCORE, MAVILIMW AND AVERAGE TRUE RANGE INDICATORS
 # TRANSACTIONS WILL BE TWEETED.
-import logging
-import time
-from datetime import datetime
-from binance.client import Client
-import common as common
+import traceback
+from logging import info, error
+import multiprocessing
+from os import system
+from time import sleep, perf_counter
+from binance.exceptions import BinanceAPIException
+import common
 import constants
 import database as database
-from orders import stopMarketOrder, takeProfitMarketOrder, marketOrder
+from orders import marketOrder, stopMarketOrder
 from coin import Coin
 
-logging.basicConfig(level=logging.INFO)
-AMOUNT_V3 = 0
-pairList = ['DYDXUSDT']
+SIDE_BUY = 'BUY'
+SIDE_SELL = 'SELL'
+LONG = 'LONG'
+SHORT = 'SHORT'
+QUANTITY = 'QUANTITY'
+PAIRLIST = constants.PAIRLIST
 
 
-def trader(coin):
-    global AMOUNT_V3
-    start = time.time()
-    coin = Coin(asset=coin)
+def FetchUSDT(pairlist):
+    restart = True
+    while restart:
+        try:
+            USDT = common.USD_ALLOCATOR(pairlist)
+            restart = False
+            return USDT
+        except Exception as ex:
+            error(ex)
+            continue
 
-    # LONG CONDITIONS.
-    if coin.prevPrice > coin.mavilimw:
-        if coin.long or coin.hasLongOrder or coin.longHold:
-            pass
-        else:
-            if coin.short:
-                # Before submit a long position order, close short position.
-                now = datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
-                stopMarketPrice = common.truncate(coin.prevPrice + coin.atr, coin.priceDec)
-                takeProfitMarketPrice = common.truncate(coin.prevPrice - coin.atr, coin.priceDec)
-                stopMarketOrder(now=now, pair=coin.pair, side=Client.SIDE_BUY, stopPrice=stopMarketPrice)
-                takeProfitMarketOrder(now=now, pair=coin.pair, side=Client.SIDE_BUY, stopPrice=takeProfitMarketPrice)
-                common.tweet(constants.FUTURE_LIMIT_ORDER_TWEET.format(now, 'LONG', coin.pair, stopMarketPrice,
-                                                                       takeProfitMarketPrice))
-                database.setHasLongOrder(asset=coin.pair, hasLongOrder=True)
-            else:
-                now = datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
-                quantity = common.truncate(AMOUNT_V3 * constants.LEVERAGE / coin.lastPrice, coin.qtyDec)
-                marketOrder(now=now, pair=coin.pair, side=Client.SIDE_BUY, quantity=quantity, logPrice=coin.lastPrice)
-                database.setLong(asset=coin.pair, isLong=True)
-                logging.info(constants.PROCESS_TIME_LOG.format(common.truncate((time.time() - start), 3)))
 
-    elif coin.zScore < -1 and coin.lastPrice < coin.bottom:
-        if coin.long or coin.hasLongOrder or coin.longHold:
-            pass
-        else:
-            if coin.short:
-                # Before submit a long position order, close short position.
-                now = datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
-                stopMarketPrice = common.truncate(coin.prevPrice + coin.atr, coin.priceDec)
-                takeProfitMarketPrice = common.truncate(coin.prevPrice - coin.atr, coin.priceDec)
-                stopMarketOrder(now=now, pair=coin.pair, side=Client.SIDE_BUY, stopPrice=stopMarketPrice)
-                takeProfitMarketOrder(now=now, pair=coin.pair, side=Client.SIDE_BUY, stopPrice=takeProfitMarketPrice)
-                common.tweet(constants.FUTURE_LIMIT_ORDER_TWEET.format(now, 'LONG', coin.pair, stopMarketPrice,
-                                                                       takeProfitMarketPrice))
-                database.setHasLongOrder(asset=coin.pair, hasLongOrder=True)
-            else:
-                now = datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
-                quantity = common.truncate(AMOUNT_V3 * constants.LEVERAGE / coin.lastPrice, coin.qtyDec)
-                marketOrder(now=now, pair=coin.pair, side=Client.SIDE_BUY, quantity=quantity, logPrice=coin.lastPrice)
-                database.setLong(asset=coin.pair, isLong=True)
-                database.setShortHold(asset=coin.pair, hold=True)
-                logging.info(constants.PROCESS_TIME_LOG.format(common.truncate((time.time() - start), 3)))
+def LongFunction(coin):
+    if (coin.prevPrice > coin.mavilimw) or (coin.zScore < -1 and coin.lastPrice < coin.bottom):
+        # If user have short position, close this before open long.
+        if coin.short:
+            try:
+                marketOrder(pair=coin.pair,
+                            side=SIDE_BUY,
+                            quantity=coin.quantity,
+                            reduceOnly=True,
+                            logPrice=coin.lastPrice)
+                database.bulkUpdatePrmOrder(pair=coin.pair, columns=[SHORT, QUANTITY], values=(0, 0))
+            except Exception as ex:
+                raise ex
 
-    # SHORT CONDITIONS.
-    if coin.prevPrice < coin.mavilimw:
-        if coin.short or coin.hasShortOrder or coin.shortHold:
-            pass
-        else:
-            if coin.long:
-                # Before submit a short order, close long position immediately.
-                now = datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
-                stopMarketPrice = common.truncate(coin.prevPrice - coin.atr, coin.priceDec)
-                takeProfitMarketPrice = common.truncate(coin.prevPrice + coin.atr, coin.priceDec)
-                stopMarketOrder(now=now, pair=coin.pair, side=Client.SIDE_SELL, stopPrice=stopMarketPrice)
-                takeProfitMarketOrder(now=now, pair=coin.pair, side=Client.SIDE_SELL, stopPrice=takeProfitMarketPrice)
-                common.tweet(constants.FUTURE_LIMIT_ORDER_TWEET.format(now, 'LONG', coin.pair, stopMarketPrice,
-                                                                       takeProfitMarketPrice))
-                database.setHasShortOrder(asset=coin.pair, hasShortOrder=True)
-            else:
-                now = datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
-                quantity = common.truncate(AMOUNT_V3 * constants.LEVERAGE / coin.lastPrice, coin.qtyDec)
-                marketOrder(now=now, pair=coin.pair, side=Client.SIDE_SELL, quantity=quantity, logPrice=coin.lastPrice)
-                database.setShort(asset=coin.pair, isShort=True)
-                logging.info(constants.PROCESS_TIME_LOG.format(common.truncate((time.time() - start), 3)))
+        # Open the long position.
+        try:
+            USDT = FetchUSDT(pairlist=PAIRLIST)
+            quantity = common.truncate(USDT * constants.LEVERAGE / coin.lastPrice, coin.qtyDec)
+            marketOrder(pair=coin.pair, side=SIDE_BUY, quantity=quantity, reduceOnly=False,
+                        logPrice=coin.lastPrice)
+            database.bulkUpdatePrmOrder(pair=coin.pair, columns=[LONG, QUANTITY], values=(1, quantity))
 
-    elif coin.zScore > 1.5 and coin.lastPrice > coin.top:
-        if coin.short or coin.hasShortOrder or coin.shortHold:
-            pass
-        else:
-            if coin.long:
-                # Before submit a short order, close long position immediately.
-                now = datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
-                stopMarketPrice = common.truncate(coin.prevPrice - coin.atr, coin.priceDec)
-                takeProfitMarketPrice = common.truncate(coin.prevPrice + coin.atr, coin.priceDec)
-                stopMarketOrder(now=now, pair=coin.pair, side=Client.SIDE_SELL, stopPrice=stopMarketPrice)
-                takeProfitMarketOrder(now=now, pair=coin.pair, side=Client.SIDE_SELL, stopPrice=takeProfitMarketPrice)
-                common.tweet(constants.FUTURE_LIMIT_ORDER_TWEET.format(now, 'LONG', coin.pair, stopMarketPrice,
-                                                                       takeProfitMarketPrice))
-                database.setHasShortOrder(asset=coin.pair, hasShortOrder=True)
-            else:
-                now = datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
-                quantity = common.truncate(AMOUNT_V3 * constants.LEVERAGE / coin.lastPrice, coin.qtyDec)
-                marketOrder(now=now, pair=coin.pair, side=Client.SIDE_SELL, quantity=quantity, logPrice=coin.lastPrice)
-                database.setHasShortOrder(asset=coin.pair, hasShortOrder=True)
-                database.setLongHold(asset=coin.pair, hold=True)
-                logging.info(constants.PROCESS_TIME_LOG.format(common.truncate((time.time() - start), 3)))
+            if coin.zScore < -1 and coin.lastPrice < coin.bottom:
+                stopPrice = common.truncate((coin.lastPrice - coin.lastPrice / 10), coin.priceDec)
+                stopMarketOrder(pair=coin.pair, side=SIDE_SELL, stopPrice=stopPrice)
+                database.updatePrmOrder(pair=coin.pair, column='SHORT_HOLD', value=1)
 
+        except Exception as ex:
+            raise ex
+
+
+def ShortFunction(coin):
+    if (coin.prevPrice < coin.mavilimw) or (coin.zScore > 1 and coin.lastPrice > coin.top):
+        # If user have a long position, close this before open a short one.
+        if coin.long:
+            try:
+                marketOrder(pair=coin.pair,
+                            side=SIDE_SELL,
+                            quantity=coin.quantity,
+                            reduceOnly=True,
+                            logPrice=coin.lastPrice)
+                database.bulkUpdatePrmOrder(pair=coin.pair, columns=[LONG, QUANTITY], values=(0, 0))
+            except Exception as ex:
+                raise ex
+
+        # Open the short position.
+        try:
+            USDT = FetchUSDT(pairlist=PAIRLIST)
+            quantity = common.truncate(USDT * constants.LEVERAGE / coin.lastPrice, coin.qtyDec)
+            marketOrder(pair=coin.pair, side=SIDE_SELL, quantity=quantity, reduceOnly=False,
+                        logPrice=coin.lastPrice)
+            database.bulkUpdatePrmOrder(pair=coin.pair, columns=[SHORT, QUANTITY], values=(1, quantity))
+
+            if coin.zScore > 1 and coin.lastPrice > coin.top:
+                stopPrice = common.truncate((coin.lastPrice + coin.lastPrice / 10), coin.priceDec)
+                stopMarketOrder(pair=coin.pair, side=SIDE_BUY, stopPrice=stopPrice)
+                database.updatePrmOrder(pair=coin.pair, column='LONG_HOLD', value=1)
+        except Exception as ex:
+            raise ex
+
+
+def CheckHoldFlags(coin):
     if coin.prevPrice > coin.mavilimw and coin.shortHold:
-        database.setShortHold(asset=coin.pair, hold=False)
-
+        database.updatePrmOrder(pair=coin.pair, column='SHORT_HOLD', value=0)
     elif coin.prevPrice < coin.mavilimw and coin.longHold:
-        database.setLongHold(asset=coin.pair, hold=False)
+        database.updatePrmOrder(pair=coin.pair, column='LONG_HOLD', value=0)
+
+
+def Trader(coin):
+    coin = Coin(pair=coin)
+    info(constants.INITIAL_LOG.format(common.Now(), coin.pair, coin.lastPrice, coin.zScore, coin.top, coin.bottom))
+    try:
+        if not coin.long and not coin.longHold:
+            LongFunction(coin=coin)  # LONG CONDITIONS.
+
+        elif not coin.short and not coin.shortHold:
+            ShortFunction(coin=coin)  # SHORT CONDITIONS.
+
+        CheckHoldFlags(coin=coin)
+    except BinanceAPIException as e:
+        if e.code == -1021:  # If exception is about a timestamp issue, ignore it and don't notify that exception.
+            pass
+        else:
+            error(e)
+            common.mailSender(traceback.format_exc())
 
 
 # MAIN AND INFINITE LOOP FUNCTION.
-def bot():
-    global pairList, AMOUNT_V3
-    hasLongPosList, hasShortPosList = common.initializer(pair_list=pairList)
-    if len(hasLongPosList) > 0:
-        logging.info(constants.LONG_POSITION_LOG.format(', '.join(hasLongPosList)))
-    if len(hasShortPosList) > 0:
-        logging.info(constants.SHORT_POSITION_LOG.format(', '.join(hasShortPosList)))
+def MultiProcessTrader():
+    startTime = perf_counter()
+    processes = [multiprocessing.Process(target=Trader, args=[pair]) for pair in PAIRLIST]
+    for process in processes:
+        process.start()
+    for process in processes:
+        process.join()
+    finishTime = perf_counter()
+    info(constants.PROCESS_TIME_LOG.format(common.truncate(finishTime - startTime, 2)))
+    sleep(10)
+    system('clear')
+
+
+def Bot():
+    common.NewInitializer(PAIRLIST)
     while 1:
-        while 1:
-            for coin in pairList:
-                try:
-                    AMOUNT_V3 = common.usd_alloc(pairList)
-
-                    hasLongOrder = common.open_order_control(asset=coin, order_side='BUY')
-                    hasShortOrder = common.open_order_control(asset=coin, order_side='SELL')
-
-                    database.setHasLongOrder(asset=coin, hasLongOrder=hasLongOrder)
-                    database.setHasShortOrder(asset=coin, hasShortOrder=hasShortOrder)
-
-                    isLong, isShort, quantity = common.check_position(asset=coin)
-
-                    database.setLong(asset=coin, isLong=isLong)
-                    database.setShort(asset=coin, isShort=isShort)
-                    database.setQuantity(asset=coin, quantity=quantity)
-
-                    trader(coin=coin)
-                    time.sleep(5)
-                except Exception as e:
-                    print(e)
-                else:
-                    pass
+        MultiProcessTrader()
 
 
-start_now = datetime.now().replace(microsecond=0)
-common.tweet(constants.START_LOG.format(start_now, ", ".join(pairList)))
-logging.info(constants.START_LOG.format(start_now, ", ".join(pairList)))
-bot()
+if __name__ == '__main__':
+    info(constants.START_LOG.format(common.Now(), ", ".join(PAIRLIST)))
+    Bot()

@@ -1,13 +1,18 @@
-import logging
+from logging import info
 import math
 from datetime import datetime, timedelta
+from smtplib import SMTP
+
 import tweepy
 from binance.client import Client, BinanceAPIException
 import database as database
 import constants
 
 client = Client(api_key=constants.BINANCE_FUTURES_API_KEY, api_secret=constants.BINANCE_FUTURES_API_SECRET_KEY)
-logging.basicConfig(level=logging.INFO)
+
+
+def Now():
+    return datetime.now().strftime('%d/%m/%Y %H:%M:%S')
 
 
 # Truncates the given value.
@@ -24,11 +29,11 @@ def truncate(number, decimals):
 
 
 # Sets decimal values based on selected asset.
-def decimal_place(asset):
-    info = client.futures_exchange_info()
-    info = info['symbols']
-    for x in info:
-        if x['pair'] == asset:
+def decimal_place(pair):
+    decimalInfo = client.futures_exchange_info()
+    decimalInfo = decimalInfo['symbols']
+    for x in decimalInfo:
+        if x['pair'] == pair:
             minPrice = str(x['filters'][0]['tickSize'])
             minQty = str(x['filters'][1]['minQty'])
             start = '0.'
@@ -38,86 +43,86 @@ def decimal_place(asset):
                 qtyDec = 0
             else:
                 qtyDec = len(minQty[minQty.find(start) + len(start):minQty.rfind(end)]) + 1
-            return priceDec, qtyDec
+            return priceDec, qtyDec, minQty
 
 
 # Retrieves last 2000 price actions.
-def price_action(symbol, interval):
-    first_set = client.futures_klines(symbol=symbol, interval=interval, limit=1000)
+def priceActions(pair, interval):
+    first_set = client.futures_klines(symbol=pair, interval=interval, limit=1000)
     timestamp = first_set[0][0]
     second_timestamp = datetime.fromtimestamp(timestamp / 1e3) - timedelta(hours=1)
     second_timestamp = int(datetime.timestamp(second_timestamp))
     exp = len(str(timestamp)) - len(str(second_timestamp))
     second_timestamp *= pow(10, exp)
-    second_set = client.futures_klines(symbol=symbol, interval=interval, limit=1000, endTime=second_timestamp)
+    second_set = client.futures_klines(symbol=pair, interval=interval, limit=1000, endTime=second_timestamp)
     joined_list = [*second_set, *first_set]
     return joined_list
 
 
 # Checks if an order is already submitted.
-def open_order_control(asset, order_side):
-    position = client.futures_get_open_orders(symbol=asset)
+def checkOpenOrder(pair, order_side):
+    position = client.futures_get_open_orders(symbol=pair)
     if len(position) == 0:
         return False
     elif len(position) > 0:
         for x in position:
             if x['side'] == order_side:
-                return True
+                return 1
             else:
-                return False
+                return 0
 
 
-def initializer(pair_list):
-    has_long = []
-    has_short = []
-    for coin in pair_list:
+def mailSender(exceptionMessage):
+    try:
+        smtpConn = SMTP('smtp.gmail.com', 587)
+        smtpConn.starttls()
+        smtpConn.login(constants.SENDER_EMAIL, constants.EMAIL_PASSWORD)
+        exceptionMessage = constants.EMAIL_FORMAT.format(constants.EMAIL_SUBJECT, exceptionMessage)
+        smtpConn.sendmail(constants.SENDER_EMAIL, constants.RECEIVER_EMAIL, exceptionMessage)
+        smtpConn.quit()
+    except Exception as ex:
+        info(ex)
+        pass
+
+
+def NewInitializer(pairList):
+    # database.initPrmOrderTable(pair=constants.BUSD + constants.USDT)
+    for pair in pairList:
 
         try:
-            client.futures_change_margin_type(symbol=coin, marginType='ISOLATED')
+            client.futures_change_margin_type(symbol=pair, marginType='ISOLATED')
         except BinanceAPIException as e:
-            logging.info(e.message)
-            pass
-
+            if e.code == -4046:
+                pass
+            else:
+                raise e
         try:
             client.futures_change_position_mode(dualSidePosition='false')
         except BinanceAPIException as e:
-            logging.info(e.message)
-            pass
+            if e.code == -4059:
+                pass
+            else:
+                raise e
 
-        client.futures_change_leverage(symbol=coin, leverage=constants.LEVERAGE)
+        try:
+            client.futures_change_leverage(symbol=pair, leverage=constants.LEVERAGE)
+        except BinanceAPIException as e:
+            raise e
 
-        database.createDatabase(asset=coin)
-        longPosition, shortPosition, quantity = check_position(asset=coin)
+        priceDec, qtyDec, minQty = decimal_place(pair=pair)
+        long, short, quantity = checkPosition(pair)
+        hasLongOrder = checkOpenOrder(pair=pair, order_side='LONG')
+        hasShortOrder = checkOpenOrder(pair=pair, order_side='LONG')
+        parameters = (pair, priceDec, qtyDec, minQty, long, short, quantity, 0, 0, hasLongOrder, hasShortOrder)
+        database.initPrmOrderTable(parameters)
 
-        if longPosition:
-            database.setLong(asset=coin, isLong=True)
-            database.setQuantity(asset=coin, quantity=quantity)
-            has_long.append(coin)
-        elif not longPosition:
-            database.setLong(asset=coin, isLong=False)
-            database.setQuantity(asset=coin, quantity=0)
-
-        if shortPosition:
-            database.setShort(asset=coin, isShort=True)
-            database.setQuantity(asset=coin, quantity=quantity)
-            has_short.append(coin)
-        elif not shortPosition:
-            database.setQuantity(asset=coin, quantity=0)
-            database.setShort(asset=coin, isShort=False)
-
-        hasLongOrder = open_order_control(asset=coin, order_side='BUY')
-        database.setHasLongOrder(asset=coin, hasLongOrder=hasLongOrder)
-
-        hasShortOrder = open_order_control(asset=coin, order_side='SELL')
-        database.setHasShortOrder(asset=coin, hasShortOrder=hasShortOrder)
-
-        return has_long, has_short
+    info("Creating Database successfully completed.")
 
 
-# Checks if user has position.
-def check_position(asset):
-    info = client.futures_position_information(symbol=asset)
-    positionAmt = float(info[-1]['positionAmt'])
+# Checks if user has either long or short position and returns amount.
+def checkPosition(pair):
+    positionInfo = client.futures_position_information(symbol=pair)
+    positionAmt = float(positionInfo[-1]['positionAmt'])
     if positionAmt > 0:
         return True, False, positionAmt
     elif positionAmt < 0:
@@ -126,24 +131,22 @@ def check_position(asset):
         return False, False, 0
 
 
-def wallet(asset):
+def USDTBALANCE():
     balance = client.futures_account_balance()
     for x in balance:
-        if x['asset'] == asset:
+        if x['asset'] == constants.USDT:
             return float(x['withdrawAvailable'])
 
 
 # Sets amount of purchasing dynamically.
-def usd_alloc(asset_list):
+def USD_ALLOCATOR(asset_list):
     divider = 0
     for x in asset_list:
-        isLong = database.getLong(asset=x)
-        isShort = database.getShort(asset=x)
-        has_long_order = database.getHasLongOrder(asset=x)
-        has_short_order = database.getHasShortOrder(asset=x)
-        if not isLong and not isShort and not has_long_order and not has_short_order:
-            divider += 2
-    return wallet(asset=constants.USDT) / divider if divider > 0 else wallet(asset=constants.USDT)
+        isLong = database.getLong(pair=x)
+        isShort = database.getShort(pair=x)
+        if not isLong and not isShort:
+            divider += 1
+    return USDTBALANCE() / divider if divider > 0 else USDTBALANCE()
 
 
 # Sends tweet.
