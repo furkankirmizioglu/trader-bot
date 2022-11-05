@@ -1,11 +1,10 @@
-from binance import Client
+import asyncio
 from numpy import array
 from scipy.stats import stats
-import common
+import common as common
+import constants
 import database
 from indicators import mavilimBullAndBear, atr
-
-PRICE_INTERVAL = Client.KLINE_INTERVAL_1HOUR
 
 
 class Coin:
