@@ -22,9 +22,9 @@ def limitOrder(pair, side, quantity, limit):
                                                    timeInForce=Client.TIME_IN_FORCE_GTC)
             orderLogParameters = (response['orderId'], now, pair, side, quantity, limit)
             insertIntoOrderLog(orderLogParameters)
-            tweet(constants.FUTURE_LIMIT_ORDER_TWEET.format(now, side.capitalize(), pair, limit))
+            tweet(constants.FUTURE_LIMIT_ORDER_LOG.format(now, side.capitalize(), pair, limit))
 
-        logging.info(constants.SUBMIT_ORDER_LOG.format(now, pair, side.upper(), limit))
+        logging.info(constants.FUTURE_LIMIT_ORDER_LOG.format(now, side.capitalize(), pair, limit))
 
     except BinanceAPIException as e:
         logging.error(e)
@@ -42,9 +42,12 @@ def marketOrder(pair, side, quantity, reduceOnly, logPrice):
                                                type=Client.FUTURE_ORDER_TYPE_MARKET)
         orderLogParameters = (response['orderId'], now, pair, side, quantity, logPrice)
         insertIntoOrderLog(orderLogParameters)
-        tweet(constants.FUTURE_MARKET_ORDER_TWEET.format(now, side.capitalize(), pair, logPrice))
-
-    logging.info(constants.SUBMIT_ORDER_LOG.format(now, pair, side.upper(), logPrice))
+        if reduceOnly:
+            logging.info(constants.CLOSE_POSITION_LOG.format(now, pair, side, logPrice))
+            tweet(constants.CLOSE_POSITION_LOG.format(now, pair, side, logPrice))
+        else:
+            logging.info(constants.FUTURE_MARKET_ORDER_LOG.format(now, side.upper(), pair, logPrice))
+            tweet(constants.FUTURE_MARKET_ORDER_LOG.format(now, side.upper(), pair, logPrice))
 
 
 def stopMarketOrder(pair, side, stopPrice):
@@ -56,8 +59,9 @@ def stopMarketOrder(pair, side, stopPrice):
                                                closePosition='true',
                                                stopPrice=stopPrice)
         orderLogParameters = (response['orderId'], now, pair, side, 0, 0)
-        logging.info(constants.SUBMIT_ORDER_LOG.format(now, pair, side.upper(), stopPrice))
         insertIntoOrderLog(orderLogParameters)
+        logging.info(constants.FUTURE_STOP_ORDER_LOG.format(now, pair, side, stopPrice))
+        tweet(constants.FUTURE_STOP_ORDER_LOG.format(now, pair, side, stopPrice))
 
 
 def TrailingStopOrder(pair, side, quantity, activationPrice):

@@ -2,9 +2,12 @@ from logging import info
 import math
 from datetime import datetime, timedelta
 from smtplib import SMTP
+from unittest import TestCase
 
 import tweepy
 from binance.client import Client, BinanceAPIException
+from firebase_admin import messaging
+
 import database as database
 import constants
 
@@ -85,10 +88,8 @@ def mailSender(exceptionMessage):
         pass
 
 
-def NewInitializer(pairList):
-    # database.initPrmOrderTable(pair=constants.BUSD + constants.USDT)
+def Initializer(pairList):
     for pair in pairList:
-
         try:
             client.futures_change_margin_type(symbol=pair, marginType='ISOLATED')
         except BinanceAPIException as e:
@@ -103,20 +104,28 @@ def NewInitializer(pairList):
                 pass
             else:
                 raise e
-
         try:
             client.futures_change_leverage(symbol=pair, leverage=constants.LEVERAGE)
         except BinanceAPIException as e:
             raise e
 
-        priceDec, qtyDec, minQty = decimal_place(pair=pair)
-        long, short, quantity = checkPosition(pair)
-        hasLongOrder = checkOpenOrder(pair=pair, order_side='LONG')
-        hasShortOrder = checkOpenOrder(pair=pair, order_side='LONG')
-        parameters = (pair, priceDec, qtyDec, minQty, long, short, quantity, 0, 0, hasLongOrder, hasShortOrder)
-        database.initPrmOrderTable(parameters)
+        data = database.selectAllFromPrmOrder(pair=pair)
+        if len(data) == 0:
+            priceDec, qtyDec, minQty = decimal_place(pair=pair)
+            long, short, quantity = checkPosition(pair)
+            hasLongOrder = checkOpenOrder(pair=pair, order_side='LONG')
+            hasShortOrder = checkOpenOrder(pair=pair, order_side='SHORT')
+            parameters = (pair, priceDec, qtyDec, minQty, long, short, quantity, 0, 0, hasLongOrder, hasShortOrder)
+            database.initPrmOrderTable(parameters)
+        else:
+            long, short, quantity = checkPosition(pair)
+            hasLongOrder = checkOpenOrder(pair=pair, order_side='LONG')
+            hasShortOrder = checkOpenOrder(pair=pair, order_side='SHORT')
+            values = (long, short, quantity, hasLongOrder, hasShortOrder)
+            columns = ['LONG', 'SHORT', 'QUANTITY', 'HAS_LONG_ORDER', 'HAS_SHORT_ORDER']
+            database.bulkUpdatePrmOrder(pair=pair, columns=columns, values=values)
 
-    info("Creating Database successfully completed.")
+    info("Database update has completed successfully.")
 
 
 # Checks if user has either long or short position and returns amount.
@@ -155,3 +164,23 @@ def tweet(status):
     auth.set_access_token(constants.TWITTER_ACCESS_TOKEN, constants.TWITTER_ACCESS_SECRET_TOKEN)
     twitter = tweepy.API(auth)
     twitter.update_status(status)
+
+
+def notifier(logText):
+    # See documentation on defining a message payload.
+    notification = messaging.Notification(
+        title=constants.NOTIFIER_TITLE,
+        body=logText
+    )
+    message = messaging.Message(
+        token=constants.FIREBASE_DEVICE_KEY,
+        notification=notification
+    )
+    # Send a message to the device corresponding to the provided
+    # registration token.
+    messaging.send(message)
+
+
+class Test(TestCase):
+    def test_check_position(self):
+        assert checkPosition(pair="LRCUSDT") == (False, True, -79)

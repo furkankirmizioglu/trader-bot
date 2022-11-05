@@ -39,6 +39,7 @@ def LongFunction(coin):
         # If user have short position, close this before open long.
         if coin.short:
             try:
+                # TODO -> LOG HAS TO BE CHANGED FOR CLOSING SHORT POSITION.
                 marketOrder(pair=coin.pair,
                             side=SIDE_BUY,
                             quantity=coin.quantity,
@@ -113,6 +114,7 @@ def Trader(coin):
             ShortFunction(coin=coin)  # SHORT CONDITIONS.
 
         CheckHoldFlags(coin=coin)
+
     except BinanceAPIException as e:
         if e.code == -1021:  # If exception is about a timestamp issue, ignore it and don't notify that exception.
             pass
@@ -136,7 +138,7 @@ def MultiProcessTrader():
 
 
 def Bot():
-    common.NewInitializer(PAIRLIST)
+    common.Initializer(PAIRLIST)
     while 1:
         MultiProcessTrader()
 
