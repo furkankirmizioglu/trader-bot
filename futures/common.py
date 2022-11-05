@@ -95,25 +95,30 @@ def mailSender(exceptionMessage):
 
 
 def Initializer(pairList):
+    database.createPrmOrderTable()
+    database.createOrderLogTable()
     for pair in pairList:
         try:
             client.futures_change_margin_type(symbol=pair, marginType='ISOLATED')
         except BinanceAPIException as e:
-            if e.code == -4046:
+            if e.code == -4046 or e.code == -1021:
                 pass
             else:
                 raise e
         try:
             client.futures_change_position_mode(dualSidePosition='false')
         except BinanceAPIException as e:
-            if e.code == -4059:
+            if e.code == -4059 or e.code == -1021:
                 pass
             else:
                 raise e
         try:
             client.futures_change_leverage(symbol=pair, leverage=constants.LEVERAGE)
         except BinanceAPIException as e:
-            raise e
+            if e.code == -1021:
+                pass
+            else:
+                raise e
 
         data = database.selectAllFromPrmOrder(pair=pair)
         if len(data) == 0:
@@ -122,7 +127,7 @@ def Initializer(pairList):
             hasLongOrder = checkOpenOrder(pair=pair, order_side='LONG')
             hasShortOrder = checkOpenOrder(pair=pair, order_side='SHORT')
             parameters = (pair, priceDec, qtyDec, minQty, long, short, quantity, 0, 0, hasLongOrder, hasShortOrder)
-            database.initPrmOrderTable(parameters)
+            database.insertIntoPrmOrder(parameters)
         else:
             long, short, quantity = checkPosition(pair)
             hasLongOrder = checkOpenOrder(pair=pair, order_side='LONG')

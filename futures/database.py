@@ -186,15 +186,6 @@ def removeLogFromOrderLog(pair, orderId):
         print(ex)
         conn.close()
 
-
-def initPrmOrderTable(parameters):
-    createPrmOrderTable()
-    createOrderLogTable()
-    rows = selectAllFromPrmOrder(pair=parameters[0])
-    if len(rows) == 0:
-        insertIntoPrmOrder(parameters=parameters)
-
-
 def getHasLongOrder(pair):
     data = selectAllFromPrmOrder(pair=pair)
     return data[-1][7]
