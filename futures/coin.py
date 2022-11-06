@@ -1,7 +1,7 @@
 import asyncio
 from numpy import array
 from scipy.stats import stats
-import common as common
+import common
 import constants
 import database
 from indicators import mavilimBullAndBear, atr

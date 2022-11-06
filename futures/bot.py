@@ -3,7 +3,7 @@
 # USES Z SCORE, MAVILIMW AND AVERAGE TRUE RANGE INDICATORS
 # TRANSACTIONS WILL BE TWEETED.
 import traceback
-from logging import info, error
+from logging import basicConfig, INFO, info, error
 import multiprocessing
 from os import system
 from time import sleep, perf_counter
@@ -20,6 +20,7 @@ LONG = 'LONG'
 SHORT = 'SHORT'
 QUANTITY = 'QUANTITY'
 PAIRLIST = constants.PAIRLIST
+basicConfig(level=INFO)
 
 
 def FetchUSDT(pairlist):

@@ -1,5 +1,5 @@
 import os
-from logging import info
+from logging import basicConfig, INFO, info
 import math
 from datetime import datetime, timedelta
 from smtplib import SMTP
@@ -15,6 +15,7 @@ path = os.path.dirname(__file__)
 firebase = path + "/data/firebase.json"
 firebase_cred = credentials.Certificate(firebase)
 firebase_app = initialize_app(firebase_cred)
+basicConfig(level=INFO)
 
 
 def Now():

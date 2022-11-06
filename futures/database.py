@@ -186,6 +186,7 @@ def removeLogFromOrderLog(pair, orderId):
         print(ex)
         conn.close()
 
+
 def getHasLongOrder(pair):
     data = selectAllFromPrmOrder(pair=pair)
     return data[-1][7]

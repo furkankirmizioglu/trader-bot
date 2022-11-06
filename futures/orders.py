@@ -1,7 +1,6 @@
-from logging import info
 from binance.client import Client
 import constants
-from common import tweet, Now, notifier
+from common import Now
 from database import insertIntoOrderLog
 
 client = Client(api_key=constants.BINANCE_FUTURES_API_KEY, api_secret=constants.BINANCE_FUTURES_API_SECRET_KEY)
