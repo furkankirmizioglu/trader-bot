@@ -3,13 +3,10 @@ from logging import info
 import math
 from datetime import datetime, timedelta
 from smtplib import SMTP
-from unittest import TestCase
-
 import tweepy
 from binance.client import Client, BinanceAPIException
 from firebase_admin import messaging, credentials, initialize_app
-
-import database as database
+import database
 import constants
 
 client = Client(api_key=constants.BINANCE_FUTURES_API_KEY, api_secret=constants.BINANCE_FUTURES_API_SECRET_KEY)
@@ -190,8 +187,3 @@ def notifier(logText):
     # Send a message to the device corresponding to the provided
     # registration token.
     messaging.send(message)
-
-
-class Test(TestCase):
-    def test_check_position(self):
-        assert checkPosition(pair="LRCUSDT") == (False, True, -79)

@@ -13,16 +13,12 @@ PROCESS_TIME_LOG = "This cycle has processed in {} seconds."
 
 INITIAL_LOG = "{0} - {1} | Price: {2} | Z-Score: {3} | Top: {4} | Bottom: {5}"
 CLOSE_POSITION_LOG = "{0} - Your {1} {2} position has closed at {3} market price."
-FUTURE_LIMIT_ORDER_LOG = "{0} - Futures {1} order for {2} has been submitted.\nTake-Profit : {4}\nStop-Limit : {3}"
-FUTURE_MARKET_ORDER_LOG = "{0} - Futures {1} order for {2} has submitted at {3} market price."
-FUTURE_STOP_ORDER_LOG = "{0} - Futures stop {1} order for {2} has submitted at {3}."
+FUTURES_LIMIT_ORDER_LOG = "{0} - Futures {1} order for {2} has submitted.\nTake-Profit : {4}\nStop-Limit : {3}"
+FUTURES_MARKET_ORDER_LOG = "{0} - Futures {1} order for {2} has submitted at {3} market price."
+FUTURES_STOP_ORDER_LOG = "{0} - Futures stop {1} order for {2} has submitted at {3}."
 TRAILING_ORDER_LOG = "{0} - Futures trailing stop {1} order for {2} has submitted.\nActivation Price : {3}"
 
 NOTIFIER_TITLE = "You have a new trade activity !"
-NOTIFIER_CANCEL_ORDER_LOG = "Latest {0} order for {1} has canceled."
-NOTIFIER_STOP_LIMIT_ORDER_LOG = "{0} order for {1} has submitted.\nLimit: {2}"
-NOTIFIER_OCO_ORDER_LOG = "{0} order for {1} has submitted.\nLimit: {2} | Stop-Limit: {3}"
-NOTIFIER_TRAILING_ORDER_LOG = "Trailing stop {0} order for {1} has submitted.\nActivation Price: {2}"
 
 USDT = 'USDT'
 

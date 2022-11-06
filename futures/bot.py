@@ -36,31 +36,55 @@ def FetchUSDT(pairlist):
 
 def LongFunction(coin):
     if (coin.prevPrice > coin.mavilimw) or (coin.zScore < -1 and coin.lastPrice < coin.bottom):
-        # If user have short position, close this before open long.
+        # If user have short position, close this before open a new long position.
         if coin.short:
             try:
-                # TODO -> LOG HAS TO BE CHANGED FOR CLOSING SHORT POSITION.
                 marketOrder(pair=coin.pair,
                             side=SIDE_BUY,
                             quantity=coin.quantity,
                             reduceOnly=True,
                             logPrice=coin.lastPrice)
-                database.bulkUpdatePrmOrder(pair=coin.pair, columns=[SHORT, QUANTITY], values=(0, 0))
+                database.bulkUpdatePrmOrder(pair=coin.pair,
+                                            columns=[SHORT, QUANTITY],
+                                            values=(0, 0))
+                log = constants.CLOSE_POSITION_LOG.format(common.Now(), coin.pair, SHORT, coin.lastPrice)
+                common.tweet(log)
+                common.notifier(log)
+                info(log)
             except Exception as ex:
                 raise ex
 
-        # Open the long position.
+        # Open long position.
         try:
             USDT = FetchUSDT(pairlist=PAIRLIST)
             quantity = common.truncate(USDT * constants.LEVERAGE / coin.lastPrice, coin.qtyDec)
-            marketOrder(pair=coin.pair, side=SIDE_BUY, quantity=quantity, reduceOnly=False,
+            # Workaround -> Subtract %5 from quantity for prevent "margin is insufficient" error.
+            quantity = common.truncate(quantity - quantity * 0.05, coin.qtyDec)
+            marketOrder(pair=coin.pair,
+                        side=SIDE_BUY,
+                        quantity=quantity,
+                        reduceOnly=False,
                         logPrice=coin.lastPrice)
-            database.bulkUpdatePrmOrder(pair=coin.pair, columns=[LONG, QUANTITY], values=(1, quantity))
+            database.bulkUpdatePrmOrder(pair=coin.pair,
+                                        columns=[LONG, QUANTITY],
+                                        values=(1, quantity))
+            log = constants.FUTURES_MARKET_ORDER_LOG.format(common.Now(), LONG, coin.pair, coin.lastPrice)
+            common.notifier(log)
+            common.tweet(log)
+            info(log)
 
             if coin.zScore < -1 and coin.lastPrice < coin.bottom:
                 stopPrice = common.truncate((coin.lastPrice - coin.lastPrice / 10), coin.priceDec)
-                stopMarketOrder(pair=coin.pair, side=SIDE_SELL, stopPrice=stopPrice)
-                database.updatePrmOrder(pair=coin.pair, column='SHORT_HOLD', value=1)
+                stopMarketOrder(pair=coin.pair,
+                                side=SIDE_SELL,
+                                stopPrice=stopPrice)
+                database.updatePrmOrder(pair=coin.pair,
+                                        column='SHORT_HOLD',
+                                        value=1)
+                log = constants.FUTURES_STOP_ORDER_LOG.format(common.Now(), coin.pair, SHORT, stopPrice)
+                common.notifier(log)
+                common.tweet(log)
+                info(log)
 
         except Exception as ex:
             raise ex
@@ -77,21 +101,44 @@ def ShortFunction(coin):
                             reduceOnly=True,
                             logPrice=coin.lastPrice)
                 database.bulkUpdatePrmOrder(pair=coin.pair, columns=[LONG, QUANTITY], values=(0, 0))
+                log = constants.CLOSE_POSITION_LOG.format(common.Now(), coin.pair, LONG, coin.lastPrice)
+                common.tweet(log)
+                common.notifier(log)
+                info(log)
             except Exception as ex:
                 raise ex
 
-        # Open the short position.
+        # Open short position.
         try:
             USDT = FetchUSDT(pairlist=PAIRLIST)
             quantity = common.truncate(USDT * constants.LEVERAGE / coin.lastPrice, coin.qtyDec)
-            marketOrder(pair=coin.pair, side=SIDE_SELL, quantity=quantity, reduceOnly=False,
+            # Workaround -> Subtract %5 from quantity for prevent "margin is insufficient" error.
+            quantity = common.truncate(quantity - quantity * 0.05, coin.qtyDec)
+            marketOrder(pair=coin.pair,
+                        side=SIDE_SELL,
+                        quantity=quantity,
+                        reduceOnly=False,
                         logPrice=coin.lastPrice)
-            database.bulkUpdatePrmOrder(pair=coin.pair, columns=[SHORT, QUANTITY], values=(1, quantity))
+            database.bulkUpdatePrmOrder(pair=coin.pair,
+                                        columns=[SHORT, QUANTITY],
+                                        values=(1, quantity))
+            log = constants.FUTURES_MARKET_ORDER_LOG.format(common.Now(), SHORT, coin.pair, coin.lastPrice)
+            common.notifier(log)
+            common.tweet(log)
+            info(log)
 
             if coin.zScore > 1 and coin.lastPrice > coin.top:
                 stopPrice = common.truncate((coin.lastPrice + coin.lastPrice / 10), coin.priceDec)
-                stopMarketOrder(pair=coin.pair, side=SIDE_BUY, stopPrice=stopPrice)
-                database.updatePrmOrder(pair=coin.pair, column='LONG_HOLD', value=1)
+                stopMarketOrder(pair=coin.pair,
+                                side=SIDE_BUY,
+                                stopPrice=stopPrice)
+                database.updatePrmOrder(pair=coin.pair,
+                                        column='LONG_HOLD',
+                                        value=1)
+                log = constants.FUTURES_STOP_ORDER_LOG.format(common.Now(), coin.pair, LONG, stopPrice)
+                common.notifier(log)
+                common.tweet(log)
+                info(log)
         except Exception as ex:
             raise ex
 
