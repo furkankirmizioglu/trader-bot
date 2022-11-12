@@ -51,7 +51,7 @@ def bottom_long(coin):
                                          quantity=coin.quantity,
                                          activationPrice=coin.lastPrice)
             coin.trailingStopLongOrderId = order_id
-            database.updatePrmOrder(pair=coin.pair, column=TRAILING_STOP_SHORT_ORDER_ID, value=order_id)
+            database.updatePrmOrder(pair=coin.pair, column=TRAILING_STOP_LONG_ORDER_ID, value=order_id)
             log = constants.TRAILING_ORDER_LOG(common.Now(), LONG, coin.pair, coin.lastPrice)
             common.tweet(log)
             common.notifier(log)
