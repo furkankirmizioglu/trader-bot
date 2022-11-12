@@ -24,17 +24,17 @@ class Coin:
     quantity = 0
     longHold = None
     shortHold = None
-    hasLongOrder = None
-    hasShortOrder = None
+    trailingStopLongOrderId = None
+    trailingStopShortOrderId = None
 
     async def isLongAndOpenOrders(self, queryResponse):
-        self.hasLongOrder = common.checkOpenOrder(pair=self.pair, order_side="LONG")
-        self.hasShortOrder = common.checkOpenOrder(pair=self.pair, order_side="SHORT")
         self.long = queryResponse[4]
         self.short = queryResponse[5]
         self.quantity = queryResponse[6]
         self.longHold = queryResponse[7]
         self.shortHold = queryResponse[8]
+        self.trailingStopLongOrderId = queryResponse[9]
+        self.trailingStopShortOrderId = queryResponse[10]
 
     async def pricesAndValues(self, queryResponse):
         self.priceDec = queryResponse[1]

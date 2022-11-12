@@ -74,7 +74,7 @@ def checkOpenOrder(pair, order_side):
     elif len(position) > 0:
         for x in position:
             if x['side'] == order_side:
-                return 1
+                return x['orderId']
             else:
                 return 0
 
@@ -122,16 +122,12 @@ def Initializer(pairList):
         if len(data) == 0:
             priceDec, qtyDec, minQty = decimal_place(pair=pair)
             long, short, quantity = checkPosition(pair)
-            hasLongOrder = checkOpenOrder(pair=pair, order_side='LONG')
-            hasShortOrder = checkOpenOrder(pair=pair, order_side='SHORT')
-            parameters = (pair, priceDec, qtyDec, minQty, long, short, quantity, 0, 0, hasLongOrder, hasShortOrder)
+            parameters = (pair, priceDec, qtyDec, minQty, long, short, quantity, 0, 0, 0, 0)
             database.insertIntoPrmOrder(parameters)
         else:
             long, short, quantity = checkPosition(pair)
-            hasLongOrder = checkOpenOrder(pair=pair, order_side='LONG')
-            hasShortOrder = checkOpenOrder(pair=pair, order_side='SHORT')
-            values = (long, short, quantity, hasLongOrder, hasShortOrder)
-            columns = ['LONG', 'SHORT', 'QUANTITY', 'HAS_LONG_ORDER', 'HAS_SHORT_ORDER']
+            values = (long, short, quantity)
+            columns = ['LONG', 'SHORT', 'QUANTITY']
             database.bulkUpdatePrmOrder(pair=pair, columns=columns, values=values)
 
     info("Database update has completed successfully.")
@@ -142,11 +138,11 @@ def checkPosition(pair):
     positionInfo = client.futures_position_information(symbol=pair)
     positionAmt = float(positionInfo[-1]['positionAmt'])
     if positionAmt > 0:
-        return True, False, positionAmt
+        return 1, 0, positionAmt
     elif positionAmt < 0:
-        return False, True, positionAmt
+        return 0, 1, abs(positionAmt)
     else:
-        return False, False, 0
+        return 0, 0, 0
 
 
 def USDTBALANCE():
@@ -165,6 +161,11 @@ def USD_ALLOCATOR(asset_list):
         if not isLong and not isShort:
             divider += 1
     return USDTBALANCE() / divider if divider > 0 else USDTBALANCE()
+
+
+def check_order_status(pair, order_id):
+    response = client.futures_get_order(symbol=pair, orderId=order_id)
+    return response['status']
 
 
 # Sends tweet.

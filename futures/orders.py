@@ -40,11 +40,14 @@ def stopMarketOrder(pair, side, stopPrice):
 
 def TrailingStopOrder(pair, side, quantity, activationPrice):
     if not TEST_MODE:
-        tsoResponse = client.create_order(symbol=pair,
-                                          side=side,
-                                          quantity=quantity,
-                                          type=Client.FUTURE_ORDER_TYPE_TAKE_PROFIT,
-                                          price=activationPrice,
-                                          trailingDelta=300,
-                                          timeInForce=Client.TIME_IN_FORCE_GTC)
-        insertIntoOrderLog((tsoResponse['orderId'], Now(), pair, side.upper(), quantity, activationPrice, 0))
+        tsoResponse = client.futures_create_order(symbol=pair,
+                                                  side=side,
+                                                  quantity=quantity,
+                                                  type='TRAILING_STOP_MARKET',
+                                                  price=activationPrice,
+                                                  callbackRate=2,
+                                                  timeInForce=Client.TIME_IN_FORCE_GTC)
+        insertIntoOrderLog((tsoResponse['orderId'], Now(), pair, side.upper(), quantity, activationPrice))
+        return tsoResponse['orderId']
+    else:
+        return 11111111111

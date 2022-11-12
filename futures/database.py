@@ -23,13 +23,13 @@ SQL_CREATE_PRM_ORDER_TABLE = """ CREATE TABLE IF NOT EXISTS PRM_ORDER (
                                     QUANTITY REAL,
                                     LONG_HOLD INTEGER,
                                     SHORT_HOLD INTEGER,
-                                    HAS_LONG_ORDER INTEGER,
-                                    HAS_SHORT_ORDER INTEGER); """
+                                    TRAILING_STOP_LONG_ORDER_ID INTEGER,
+                                    TRAILING_STOP_SHORT_ORDER_ID INTEGER); """
 
 SQL_INSERT_INTO_ORDER_LOG = ''' INSERT INTO ORDER_LOG(ORDER_ID,INSTANCE_ID,PAIR,ORDER_SIDE,QUANTITY,PRICE) 
 VALUES(?,?,?,?,?,?); '''
 
-SQL_INSERT_INTO_PRM_ORDER = ''' INSERT INTO PRM_ORDER(PAIR,PRICE_DECIMAL,QUANTITY_DECIMAL,MINIMUM_QUANTITY,LONG,SHORT,QUANTITY,LONG_HOLD,SHORT_HOLD,HAS_LONG_ORDER,HAS_SHORT_ORDER) 
+SQL_INSERT_INTO_PRM_ORDER = ''' INSERT INTO PRM_ORDER(PAIR,PRICE_DECIMAL,QUANTITY_DECIMAL,MINIMUM_QUANTITY,LONG,SHORT,QUANTITY,LONG_HOLD,SHORT_HOLD,TRAILING_STOP_LONG_ORDER_ID,TRAILING_STOP_SHORT_ORDER_ID) 
 VALUES(?,?,?,?,?,?,?,?,?,?,?); '''
 
 SQL_SELECT_FROM_PRM_ORDER = ''' SELECT * FROM PRM_ORDER WHERE PAIR=? '''
@@ -40,7 +40,7 @@ SQL_UPDATE_PRM_ORDER = ''' UPDATE PRM_ORDER SET {} WHERE PAIR=?'''
 
 SQL_DELETE_FROM_ORDER_LOG = ''' DELETE FROM ORDER_LOG WHERE PAIR=? AND ORDER_ID = ?'''
 
-UPDATE_COLUMNS = ['LONG', 'SHORT', 'HAS_LONG_ORDER', 'HAS_SHORT_ORDER']
+UPDATE_COLUMNS = ['LONG', 'SHORT', 'TRAILING_STOP_LONG_ORDER_ID', 'TRAILING_STOP_SHORT_ORDER_ID']
 
 PAIRLIST = constants.PAIRLIST
 
@@ -114,8 +114,6 @@ def selectAllFromOrderLog(pair):
         conn.close()
 
 
-# orderLogParams1 = (1234, '01/10/2022 13:14:14', 'DYDXBUSD', 'BUY', 5.2, 1.27, 1.37)
-# insertIntoOrderLog(orderLogParameters=orderLogParams1)
 def insertIntoOrderLog(orderLogParameters):
     # ORDER_ID
     # INSTANCE_ID
@@ -187,9 +185,14 @@ def removeLogFromOrderLog(pair, orderId):
         conn.close()
 
 
-def getHasLongOrder(pair):
+def getDecimals(pair):
     data = selectAllFromPrmOrder(pair=pair)
-    return data[-1][7]
+    return data[-1][1], data[-1][2]
+
+
+def getMinimumQuantity(pair):
+    data = selectAllFromPrmOrder(pair=pair)
+    return data[-1][3]
 
 
 def getLong(pair):
@@ -200,13 +203,3 @@ def getLong(pair):
 def getShort(pair):
     data = selectAllFromPrmOrder(pair=pair)
     return data[-1][5]
-
-
-def getDecimals(pair):
-    data = selectAllFromPrmOrder(pair=pair)
-    return data[-1][1], data[-1][2]
-
-
-def getMinimumQuantity(pair):
-    data = selectAllFromPrmOrder(pair=pair)
-    return data[-1][3]
