@@ -68,8 +68,8 @@ def bottom_long(coin):
                         reduceOnly=False,
                         logPrice=coin.lastPrice)
             database.bulkUpdatePrmOrder(pair=coin.pair,
-                                        columns=[LONG, SHORT_HOLD],
-                                        values=(1, 1))
+                                        columns=[LONG, SHORT_HOLD, QUANTITY],
+                                        values=(1, 1, quantity))
             log = constants.FUTURES_MARKET_ORDER_LOG.format(common.Now(), LONG, coin.pair, coin.lastPrice)
             common.notifier(log)
             common.tweet(log)
@@ -99,7 +99,7 @@ def trend_short(coin):
                         quantity=coin.quantity,
                         reduceOnly=True,
                         logPrice=coin.lastPrice)
-            database.updatePrmOrder(pair=coin.pair, column=LONG, value=0)
+            database.bulkUpdatePrmOrder(pair=coin.pair, columns=[LONG, QUANTITY], values=(0, 0))
             log = constants.CLOSE_POSITION_LOG.format(common.Now(), coin.pair, LONG, coin.lastPrice)
             common.tweet(log)
             common.notifier(log)
@@ -114,7 +114,7 @@ def trend_short(coin):
                     quantity=quantity,
                     reduceOnly=False,
                     logPrice=coin.lastPrice)
-        database.updatePrmOrder(pair=coin.pair, column=SHORT, value=1)
+        database.bulkUpdatePrmOrder(pair=coin.pair, columns=[SHORT, QUANTITY], values=(1, quantity))
         log = constants.FUTURES_MARKET_ORDER_LOG.format(common.Now(), SHORT, coin.pair, coin.lastPrice)
         common.notifier(log)
         common.tweet(log)
@@ -130,7 +130,7 @@ def trend_long(coin):
                         quantity=coin.quantity,
                         reduceOnly=True,
                         logPrice=coin.lastPrice)
-            database.updatePrmOrder(pair=coin.pair, column=SHORT, value=0)
+            database.bulkUpdatePrmOrder(pair=coin.pair, columns=[SHORT, QUANTITY], values=(0, 0))
             log = constants.CLOSE_POSITION_LOG.format(common.Now(), coin.pair, SHORT, coin.lastPrice)
             common.tweet(log)
             common.notifier(log)
@@ -145,7 +145,7 @@ def trend_long(coin):
                     quantity=quantity,
                     reduceOnly=False,
                     logPrice=coin.lastPrice)
-        database.updatePrmOrder(pair=coin.pair, column=LONG, value=1)
+        database.bulkUpdatePrmOrder(pair=coin.pair, columns=[LONG, QUANTITY], values=(1, quantity))
         log = constants.FUTURES_MARKET_ORDER_LOG.format(common.Now(), LONG, coin.pair, coin.lastPrice)
         common.notifier(log)
         common.tweet(log)
@@ -183,8 +183,8 @@ def top_short(coin):
                         reduceOnly=False,
                         logPrice=coin.lastPrice)
             database.bulkUpdatePrmOrder(pair=coin.pair,
-                                        columns=[SHORT, LONG_HOLD],
-                                        values=(1, 1))
+                                        columns=[SHORT, LONG_HOLD, QUANTITY],
+                                        values=(1, 1, quantity))
             log = constants.FUTURES_MARKET_ORDER_LOG.format(common.Now(), SHORT, coin.pair, coin.lastPrice)
             common.notifier(log)
             common.tweet(log)
