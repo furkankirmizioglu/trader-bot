@@ -219,19 +219,21 @@ def check_trailing_order_status(coin):
         status = common.check_order_status(pair=coin.pair, order_id=coin.trailingStopLongOrderId)
         if status == 'FILLED':
             database.bulkUpdatePrmOrder(pair=coin.pair,
-                                        columns=[SHORT, TRAILING_STOP_LONG_ORDER_ID],
-                                        values=(0, 0))
+                                        columns=[SHORT, TRAILING_STOP_LONG_ORDER_ID, QUANTITY],
+                                        values=(0, 0, 0))
             coin.short = 0
             coin.trailingStopLongOrderId = 0
+            coin.quantity = 0
             bottom_long(coin=coin)
     elif coin.trailingStopShortOrderId != 0:
         status = common.check_order_status(pair=coin.pair, order_id=coin.trailingStopShortOrderId)
         if status == 'FILLED':
             database.bulkUpdatePrmOrder(pair=coin.pair,
-                                        columns=[LONG, TRAILING_STOP_SHORT_ORDER_ID],
-                                        values=(0, 0))
+                                        columns=[LONG, TRAILING_STOP_SHORT_ORDER_ID, QUANTITY],
+                                        values=(0, 0, 0))
             coin.long = 0
             coin.trailingStopShortOrderId = 0
+            coin.quantity = 0
             top_short(coin=coin)
 
 
