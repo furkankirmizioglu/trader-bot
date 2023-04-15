@@ -21,6 +21,15 @@ TRAILING_ORDER_LOG = "{0} - Futures trailing stop {1} order for {2} has submitte
 NOTIFIER_TITLE = "You have a new trade activity !"
 
 USDT = 'USDT'
+SIDE_BUY = 'BUY'
+SIDE_SELL = 'SELL'
+LONG = 'LONG'
+SHORT = 'SHORT'
+LONG_HOLD = 'LONG_HOLD'
+SHORT_HOLD = 'SHORT_HOLD'
+QUANTITY = 'QUANTITY'
+TRAILING_STOP_LONG_ORDER_ID = 'TRAILING_STOP_LONG_ORDER_ID'
+TRAILING_STOP_SHORT_ORDER_ID = 'TRAILING_STOP_SHORT_ORDER_ID'
 
 BINANCE_FUTURES_API_KEY = config.get('BinanceFutures', 'apikey')
 BINANCE_FUTURES_API_SECRET_KEY = config.get('BinanceFutures', 'secretkey')
@@ -44,3 +53,4 @@ PRICE_INTERVAL = config.get('TraderBotFuturesConfig', 'interval')
 LEVERAGE = config.getint("TraderBotFuturesConfig", "LEVERAGE")
 STOP_LOSS_PERCENTAGE = config.getint("TraderBotFuturesConfig", "STOP_LOSS_PERCENTAGE")
 TEST_MODE = config.getboolean("TraderBotFuturesConfig", "TEST_MODE")
+NOTIFIER = config.getboolean("TraderBotFuturesConfig", "NOTIFIER")

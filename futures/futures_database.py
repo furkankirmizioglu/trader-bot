@@ -1,6 +1,5 @@
 import os
 import sqlite3
-import constants
 
 path = os.path.dirname(__file__)
 database = path + "/data/TraderBot.db"
@@ -42,21 +41,17 @@ SQL_DELETE_FROM_ORDER_LOG = ''' DELETE FROM ORDER_LOG WHERE PAIR=? AND ORDER_ID 
 
 UPDATE_COLUMNS = ['LONG', 'SHORT', 'TRAILING_STOP_LONG_ORDER_ID', 'TRAILING_STOP_SHORT_ORDER_ID']
 
-PAIRLIST = constants.PAIRLIST
 
-
-def createConnection():
-    conn = None
+def connection():
     try:
         conn = sqlite3.connect(database)
         return conn
     except Exception as ex:
         print(ex)
-    return conn
 
 
-def createOrderLogTable():
-    conn = createConnection()
+def create_order_log():
+    conn = connection()
     cursor = conn.cursor()
     try:
         cursor.execute(SQL_CREATE_ORDER_LOG_TABLE)
@@ -64,8 +59,8 @@ def createOrderLogTable():
         print(e)
 
 
-def createPrmOrderTable():
-    conn = createConnection()
+def create_prm_order():
+    conn = connection()
     cursor = conn.cursor()
     try:
         cursor.execute(SQL_CREATE_PRM_ORDER_TABLE)
@@ -74,8 +69,8 @@ def createPrmOrderTable():
 
 
 # This function returns all values of parameters.
-def selectAllFromPrmOrder(pair):
-    conn = createConnection()
+def select_prm_order(pair):
+    conn = connection()
     cursor = conn.cursor()
     try:
         pair = (pair,)
@@ -88,8 +83,8 @@ def selectAllFromPrmOrder(pair):
         conn.close()
 
 
-def insertIntoPrmOrder(parameters):
-    conn = createConnection()
+def insert_prm_order(parameters):
+    conn = connection()
     cursor = conn.cursor()
     try:
         cursor.execute(SQL_INSERT_INTO_PRM_ORDER, parameters)
@@ -100,8 +95,8 @@ def insertIntoPrmOrder(parameters):
         conn.close()
 
 
-def selectAllFromOrderLog(pair):
-    conn = createConnection()
+def select_order_log(pair):
+    conn = connection()
     cursor = conn.cursor()
     try:
         pair = (pair,)
@@ -114,7 +109,7 @@ def selectAllFromOrderLog(pair):
         conn.close()
 
 
-def insertIntoOrderLog(orderLogParameters):
+def insert_order_log(orderLogParameters):
     # ORDER_ID
     # INSTANCE_ID
     # PAIR
@@ -122,7 +117,7 @@ def insertIntoOrderLog(orderLogParameters):
     # QUANTITY
     # PRICE
     # STOP_PRICE
-    conn = createConnection()
+    conn = connection()
     cursor = conn.cursor()
     try:
         cursor.execute(SQL_INSERT_INTO_ORDER_LOG, orderLogParameters)
@@ -133,11 +128,11 @@ def insertIntoOrderLog(orderLogParameters):
         conn.close()
 
 
-def bulkUpdatePrmOrder(pair, columns, values):
+def prm_order_bulk_update(pair, columns, values):
     query = ""
     for column in columns:
         query = query + column + ' = ?,'
-    conn = createConnection()
+    conn = connection()
     c = conn.cursor()
     query = query[:-1]
     try:
@@ -150,8 +145,8 @@ def bulkUpdatePrmOrder(pair, columns, values):
         conn.close()
 
 
-def updatePrmOrder(pair, column, value):
-    conn = createConnection()
+def update_prm_order(pair, column, value):
+    conn = connection()
     cursor = conn.cursor()
     try:
         column = column + "=?"
@@ -165,15 +160,15 @@ def updatePrmOrder(pair, column, value):
         conn.close()
 
 
-def getLatestOrderFromOrderLog(pair):
-    rows = selectAllFromOrderLog(pair=pair)
+def get_latest_order_from_order_log(pair):
+    rows = select_order_log(pair=pair)
     # Get orderID of the latest row of order_log table.
     orderId = rows[-1][0]
     return orderId
 
 
-def removeLogFromOrderLog(pair, orderId):
-    conn = createConnection()
+def remove_from_order_log(pair, orderId):
+    conn = connection()
     cursor = conn.cursor()
     try:
         parameters = (pair, orderId)
@@ -183,23 +178,3 @@ def removeLogFromOrderLog(pair, orderId):
     except Exception as ex:
         print(ex)
         conn.close()
-
-
-def getDecimals(pair):
-    data = selectAllFromPrmOrder(pair=pair)
-    return data[-1][1], data[-1][2]
-
-
-def getMinimumQuantity(pair):
-    data = selectAllFromPrmOrder(pair=pair)
-    return data[-1][3]
-
-
-def getLong(pair):
-    data = selectAllFromPrmOrder(pair=pair)
-    return data[-1][4]
-
-
-def getShort(pair):
-    data = selectAllFromPrmOrder(pair=pair)
-    return data[-1][5]

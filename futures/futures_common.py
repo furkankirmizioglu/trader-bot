@@ -6,8 +6,8 @@ from smtplib import SMTP
 import tweepy
 from binance.client import Client, BinanceAPIException
 from firebase_admin import messaging, credentials, initialize_app
-import database
-import constants
+import futures_database as database
+import futures_constants as constants
 
 client = Client(api_key=constants.BINANCE_FUTURES_API_KEY, api_secret=constants.BINANCE_FUTURES_API_SECRET_KEY)
 
@@ -18,7 +18,7 @@ firebase_app = initialize_app(firebase_cred)
 basicConfig(level=INFO)
 
 
-def Now():
+def now():
     return datetime.now().strftime('%d/%m/%Y %H:%M:%S')
 
 
@@ -54,7 +54,7 @@ def decimal_place(pair):
 
 
 # Retrieves last 2000 price actions.
-def priceActions(pair, interval):
+def price_actions(pair, interval):
     first_set = client.futures_klines(symbol=pair, interval=interval, limit=1000)
     timestamp = first_set[0][0]
     second_timestamp = datetime.fromtimestamp(timestamp / 1e3) - timedelta(hours=1)
@@ -67,7 +67,7 @@ def priceActions(pair, interval):
 
 
 # Checks if an order is already submitted.
-def checkOpenOrder(pair, order_side):
+def check_open_orders(pair, order_side):
     position = client.futures_get_open_orders(symbol=pair)
     if len(position) == 0:
         return False
@@ -79,7 +79,7 @@ def checkOpenOrder(pair, order_side):
                 return 0
 
 
-def mailSender(exceptionMessage):
+def send_mail(exceptionMessage):
     try:
         smtpConn = SMTP('smtp.gmail.com', 587)
         smtpConn.starttls()
@@ -89,52 +89,43 @@ def mailSender(exceptionMessage):
         smtpConn.quit()
     except Exception as ex:
         info(ex)
-        pass
 
 
-def Initializer(pairList):
-    database.createPrmOrderTable()
-    database.createOrderLogTable()
+def initializer(pairList):
+    database.create_prm_order()
+    database.create_order_log()
     for pair in pairList:
         try:
             client.futures_change_margin_type(symbol=pair, marginType='ISOLATED')
         except BinanceAPIException as e:
-            if e.code == -4046 or e.code == -1021:
-                pass
-            else:
+            if e.code != -4046 and e.code != -1021:
                 raise e
         try:
             client.futures_change_position_mode(dualSidePosition='false')
         except BinanceAPIException as e:
-            if e.code == -4059 or e.code == -1021:
-                pass
-            else:
+            if e.code != -4059 and e.code != -1021:
                 raise e
         try:
             client.futures_change_leverage(symbol=pair, leverage=constants.LEVERAGE)
         except BinanceAPIException as e:
-            if e.code == -1021:
-                pass
-            else:
+            if e.code != -1021:
                 raise e
 
-        data = database.selectAllFromPrmOrder(pair=pair)
+        data = database.select_prm_order(pair=pair)
         if len(data) == 0:
             priceDec, qtyDec, minQty = decimal_place(pair=pair)
-            long, short, quantity = checkPosition(pair)
-            parameters = (pair, priceDec, qtyDec, minQty, long, short, quantity, 0, 0, 0, 0)
-            database.insertIntoPrmOrder(parameters)
+            long, short, quantity = check_position(pair)
+            database.insert_prm_order((pair, priceDec, qtyDec, minQty, long, short, quantity, 0, 0, 0, 0))
         else:
-            long, short, quantity = checkPosition(pair)
-            values = (long, short, quantity)
-            columns = ['LONG', 'SHORT', 'QUANTITY']
-            database.bulkUpdatePrmOrder(pair=pair, columns=columns, values=values)
+            long, short, quantity = check_position(pair)
+            columns = [constants.LONG, constants.SHORT, constants.QUANTITY]
+            database.prm_order_bulk_update(pair=pair, columns=columns, values=(long, short, quantity))
 
     info("Database update has completed successfully.")
 
 
 # Checks if user has either long or short position and returns amount.
-def checkPosition(pair):
+def check_position(pair):
     positionInfo = client.futures_position_information(symbol=pair)
     positionAmt = float(positionInfo[-1]['positionAmt'])
     if positionAmt > 0:
@@ -145,7 +136,7 @@ def checkPosition(pair):
         return 0, 0, 0
 
 
-def USDTBALANCE():
+def usdt_balance():
     balance = client.futures_account_balance()
     for x in balance:
         if x['asset'] == constants.USDT:
@@ -153,14 +144,15 @@ def USDTBALANCE():
 
 
 # Sets amount of purchasing dynamically.
-def USD_ALLOCATOR(asset_list):
+def usdt_allocator(asset_list):
     divider = 0
     for x in asset_list:
-        isLong = database.getLong(pair=x)
-        isShort = database.getShort(pair=x)
+        query = database.select_prm_order(pair=x)[-1]
+        isLong = query[4]
+        isShort = query[5]
         if not isLong and not isShort:
             divider += 1
-    return USDTBALANCE() / divider if divider > 0 else USDTBALANCE()
+    return usdt_balance() / divider if divider > 0 else usdt_balance()
 
 
 def check_order_status(pair, order_id):
@@ -188,4 +180,5 @@ def notifier(logText):
     )
     # Send a message to the device corresponding to the provided
     # registration token.
-    messaging.send(message)
+    if constants.NOTIFIER:
+        messaging.send(message)

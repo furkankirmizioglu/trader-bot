@@ -1,10 +1,10 @@
 import asyncio
 from numpy import array
 from scipy.stats import stats
-import common
-import constants
-import database
-from indicators import mavilimBullAndBear, atr
+from futures_common import truncate, price_actions
+from futures_constants import PRICE_INTERVAL
+from futures_database import select_prm_order
+from futures_indicators import mavilimBullAndBear, atr
 
 
 class Coin:
@@ -39,17 +39,17 @@ class Coin:
     async def pricesAndValues(self, queryResponse):
         self.priceDec = queryResponse[1]
         self.qtyDec = queryResponse[2]
-        self.candles = common.priceActions(pair=self.pair, interval=constants.PRICE_INTERVAL)
-        self.atr = atr(klines=self.candles)
+        self.candles = price_actions(pair=self.pair, interval=PRICE_INTERVAL)
+        self.atr = truncate(atr(klines=self.candles), self.priceDec)
         self.candles = array([float(x[4]) for x in self.candles])
-        self.mavilimw, self.top, self.bottom = mavilimBullAndBear(close=self.candles, truncate=self.priceDec)
-        self.zScore = common.truncate(stats.zscore(a=self.candles, axis=0, nan_policy='omit')[-1], self.priceDec)
+        self.mavilimw, self.top, self.bottom = mavilimBullAndBear(close=self.candles, decimal=self.priceDec)
+        self.zScore = truncate(stats.zscore(a=self.candles, axis=0, nan_policy='omit')[-1], self.priceDec)
         self.lastPrice = self.candles[-1]
         self.prevPrice = self.candles[-2]
         del self.candles
 
     async def mainTask(self):
-        query = database.selectAllFromPrmOrder(pair=self.pair)[-1]
+        query = select_prm_order(pair=self.pair)[-1]
         task1 = asyncio.create_task(self.isLongAndOpenOrders(query))
         task2 = asyncio.create_task(self.pricesAndValues(query))
         await task1
