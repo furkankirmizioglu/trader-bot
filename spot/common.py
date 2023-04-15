@@ -1,28 +1,25 @@
-import configparser
-import logging
-import math
-import os.path
-from datetime import datetime, timedelta
+import os
+from logging import basicConfig, INFO, info
+from math import trunc
+from datetime import datetime
 import tweepy
 from binance.client import Client
+from firebase_admin import messaging, credentials, initialize_app
+import constants
 import database
+from smtplib import SMTP
 
-BUSD = 'BUSD'
-USDT = 'USDT'
-HAVE_ASSET_LOG = "You already purchased these assets: {0}"
-MIN_USD = 12
-MIN_AMOUNT_EXCEPTION_LOG = "{0} - Buy amount cannot be less than {2} USDT! {1} buy order is invalid and won't submit."
-START_LOG = "{0} - TraderBot has started. Running for {1}"
-CANCEL_ORDER_LOG = "{0} - Latest {2} order of {1} has been cancelled."
-PROCESS_TIME_LOG = "This order has been processed in {} seconds."
+path = os.path.dirname(__file__)
+firebase = path + "/data/firebase.json"
+firebase_cred = credentials.Certificate(firebase)
+firebase_app = initialize_app(firebase_cred)
 
-config = configparser.ConfigParser()
-dirName = os.path.dirname(__file__) + "/BinanceBot.ini"
-config.read(dirName)
-API_KEY = config.get("BinanceSignIn", "apikey")
-API_SECRET_KEY = config.get("BinanceSignIn", "secretkey")
-client = Client(api_key=API_KEY, api_secret=API_SECRET_KEY)
-logging.basicConfig(level=logging.INFO)
+client = Client(api_key=constants.API_KEY, api_secret=constants.API_SECRET_KEY)
+basicConfig(level=INFO)
+
+
+def Now():
+    return datetime.now().strftime('%d/%m/%Y %H:%M:%S')
 
 
 # Truncates the given value.
@@ -32,17 +29,17 @@ def truncate(number, decimals):
     elif decimals < 0:
         raise ValueError("decimal places has to be 0 or more.")
     elif decimals == 0:
-        return math.trunc(number)
+        return trunc(number)
 
     factor = 10.0 ** decimals
-    return math.trunc(number * factor) / factor
+    return trunc(number * factor) / factor
 
 
 # Sets decimal values based on selected asset.
-def decimal_place(asset):
-    info = client.get_symbol_info(asset)
-    min_price = str(info['filters'][0]['minPrice'])
-    min_qty = str(info['filters'][2]['minQty'])
+def decimal_place(pair):
+    symbolInfo = client.get_symbol_info(pair)
+    min_price = str(symbolInfo['filters'][0]['minPrice'])
+    min_qty = str(symbolInfo['filters'][2]['minQty'])
     start = '0.'
     end = '1'
     truncate_price = len(min_price[min_price.find(start) + len(start):min_price.rfind(end)]) + 1
@@ -54,98 +51,119 @@ def decimal_place(asset):
     return truncate_price, truncate_qty
 
 
-# Retrieves last 2000 of price movements.
-def price_action(symbol, interval):
-    first_set = client.get_klines(symbol=symbol, interval=interval, limit=1000)
-    timestamp = first_set[0][0]
-    timestampsec = datetime.fromtimestamp(timestamp / 1e3) - timedelta(hours=1)
-    timestampsec = int(datetime.timestamp(timestampsec))
-    exp = len(str(timestamp)) - len(str(timestampsec))
-    timestampsec *= pow(10, exp)
-    second_set = client.get_klines(symbol=symbol, interval=interval, limit=1000, endTime=timestampsec)
-    joined_list = [*second_set, *first_set]
-    return joined_list
+# Retrieves last 1000 of price movements.
+def priceActions(pair, interval):
+    first_set = client.get_klines(symbol=pair, interval=interval, limit=1000)
+    return first_set
 
 
 # Fetches account's balance from Binance wallet.
-def wallet(asset):
-    if asset != BUSD:
-        data = client.get_asset_balance(asset=asset.replace(BUSD, ""))
+def wallet(pair):
+    if pair != constants.BUSD:
+        data = client.get_asset_balance(asset=pair.replace(constants.BUSD, ""))
         return float(data['free']) + float(data['locked'])
     else:
-        data = client.get_asset_balance(asset=asset)
+        data = client.get_asset_balance(asset=pair)
         return float(data['free'])
 
 
-def get_min_qty(asset):
-    info = client.get_symbol_info(asset)
-    min_qty = float(info['filters'][2]['minQty'])
+def getMinimumQuantity(pair):
+    qty_info = client.get_symbol_info(pair)
+    min_qty = float(qty_info['filters'][2]['minQty'])
     return min_qty
 
 
-# Checks if user has purchased the asset.
-def position_control(asset):
-    min_qty = database.get_minQty(asset=asset)
-    return True if wallet(asset=asset) > min_qty else False
+# Checks if user has given asset.
+# 1 -> True | 0 -> False
+def checkPosition(pair):
+    min_qty = database.getMinimumQuantity(pair=pair)
+    if wallet(pair=pair) > min_qty:
+        return 1
+    else:
+        return 0
 
 
 # Checks if an order is already submitted.
-def open_order_control(asset, order_side):
-    position = client.get_open_orders(symbol=asset)
-    if len(position) == 0:
-        return False
-    elif len(position) > 0:
-        for x in position:
-            if x['side'] == order_side:
-                return True
-            else:
-                return False
+# 1 = True | 2 = False
+def checkOpenOrder(pair):
+    openOrdersList = client.get_open_orders(symbol=pair)
+    if len(openOrdersList) == 0:
+        return 0, 0
+    elif len(openOrdersList) > 0:
+        for x in openOrdersList:
+            if x['side'] == constants.SIDE_BUY:
+                return 1, 0
+            elif x['side'] == constants.SIDE_SELL:
+                return 0, 1
 
 
 # Cancels given order.
-def cancel_order(asset, order_side):
-    now = datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
-    orders = client.get_open_orders(symbol=asset)
-    order_id = orders[-1]['orderId']
-    client.cancel_order(symbol=asset, orderId=order_id)
-    logging.info(CANCEL_ORDER_LOG.format(now, asset, order_side))
-    tweet(status=CANCEL_ORDER_LOG.format(now, asset, order_side))
+def cancelOrder(pair, order_side):
+    order_id = database.getLatestOrderFromOrderLog(pair=pair)
+    client.cancel_order(symbol=pair, orderId=order_id)
+    database.removeLogFromOrderLog(pair=pair, orderId=order_id)
+    log = constants.CANCEL_ORDER_LOG.format(Now(), pair, order_side.upper())
+    info(log)
+    notifier(logText=constants.NOTIFIER_CANCEL_ORDER_LOG.format(order_side.lower(), pair))
+    tweet(status=log)
 
 
 # Sets amount of purchasing dynamically.
-def usd_alloc(asset_list):
-    priceDec, qtyDec = database.get_decimals(asset=BUSD + USDT)
+def USD_ALLOCATOR(pairList):
+    priceDec, qtyDec = database.getDecimals(pair=constants.BUSD + constants.USDT)
     divider = 0
-    for x in asset_list:
-        has_asset = database.get_islong(x)
-        has_order = database.get_hasBuyOrder(asset=x)
+    for pair in pairList:
+        has_asset = database.getIsLong(pair)
+        has_order = database.getHasBuyOrder(pair=pair)
         if not has_asset and not has_order:
             divider += 1
-    return truncate(wallet(BUSD) / divider, priceDec) if divider > 0 else truncate(wallet(BUSD), priceDec)
+    return truncate(wallet(constants.BUSD) / divider, priceDec) if divider > 0 else truncate(wallet(constants.BUSD),
+                                                                                             priceDec)
 
 
-def initializer(pair_list):
-    has_long = []
-    database.init_data(asset='BUSDUSDT')
-    for pair in pair_list:
-        database.init_data(asset=pair)
-        isLong = position_control(asset=pair)
-        database.set_islong(asset=pair, isLong=isLong)
-        if isLong:
-            has_long.append(pair)
+def initializer(pairList):
+    database.initPrmOrderTable(pair=constants.BUSD + constants.USDT)
+    for pair in pairList:
+        database.initPrmOrderTable(pair=pair)
+    for pair in pairList:
+        isLong = checkPosition(pair)
+        hasBuyOrder, hasSellOrder = checkOpenOrder(pair=pair)
+        columns = ['IS_LONG', 'HAS_BUY_ORDER', 'HAS_SELL_ORDER']
+        queryParameters = (isLong, hasBuyOrder, hasSellOrder)
+        database.bulkUpdatePrmOrder(pair=pair, columns=columns, values=queryParameters)
 
-        hasBuyOrder = open_order_control(asset=pair, order_side='BUY')
-        hasSellOrder = open_order_control(asset=pair, order_side='SELL')
 
-        database.set_hasBuyOrder(asset=pair, hasBuyOrder=hasBuyOrder)
-        database.set_hasSellOrder(asset=pair, hasSellOrder=hasSellOrder)
-    return has_long
+def mailSender(exceptionMessage):
+    try:
+        smtpConn = SMTP('smtp.gmail.com', 587)
+        smtpConn.starttls()
+        smtpConn.login(constants.SENDER_EMAIL, constants.EMAIL_PASSWORD)
+        exceptionMessage = constants.EMAIL_FORMAT.format(constants.EMAIL_SUBJECT, exceptionMessage)
+        smtpConn.sendmail(constants.SENDER_EMAIL, constants.RECEIVER_EMAIL, exceptionMessage)
+        smtpConn.quit()
+    except Exception as ex:
+        info(ex)
+        pass
 
 
 # Sends tweet.
 def tweet(status):
-    auth = tweepy.OAuthHandler(config.get('TwitterAPI', 'consumer_key'),
-                               config.get('TwitterAPI', 'consumer_secret_key'))
-    auth.set_access_token(config.get('TwitterAPI', 'access_token'), config.get('TwitterAPI', 'access_secret_token'))
+    auth = tweepy.OAuthHandler(constants.TWITTER_API_KEY, constants.TWITTER_API_SECRET_KEY)
+    auth.set_access_token(constants.TWITTER_ACCESS_TOKEN, constants.TWITTER_ACCESS_SECRET_TOKEN)
     twitter = tweepy.API(auth)
     twitter.update_status(status)
+
+
+def notifier(logText):
+    # See documentation on defining a message payload.
+    notification = messaging.Notification(
+        title=constants.NOTIFIER_TITLE,
+        body=logText
+    )
+    message = messaging.Message(
+        token=constants.FIREBASE_DEVICE_KEY,
+        notification=notification
+    )
+    # Send a message to the device corresponding to the provided
+    # registration token.
+    messaging.send(message)

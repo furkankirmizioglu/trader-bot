@@ -1,191 +1,196 @@
 # TRADES ON SPOT MARKET.
-# TIME PERIOD IS 1 HOUR
+# TIME PERIOD IS 2 HOURS
 # USES Z SCORE, MAVILIMW AND AVERAGE TRUE RANGE INDICATORS
 # TRANSACTIONS WILL BE TWEETED.
-import logging
-import time
-from datetime import datetime
-from binance.client import Client
-import common
+from binance.client import BinanceAPIException
+from logging import info, error
+from time import sleep, perf_counter
+from os import system
 import database
+from common import truncate, cancelOrder, initializer, wallet, USD_ALLOCATOR, Now, mailSender
+import constants
 from coin import Coin
-from orders import oco_order
+from orders import oco_order, stopLimitOrder, TrailingStopOrder
+import multiprocessing
+import traceback
 
-logging.basicConfig(level=logging.INFO)
-pairList = ['DYDXBUSD']
+PAIRLIST = constants.PAIRLIST
 
 
-def trader(asset, USDT_AMOUNT):
-    start = time.time()
+def FetchUSDT(pairlist):
+    restart = True
+    while restart:
+        try:
+            USDT = USD_ALLOCATOR(pairlist)
+            restart = False
+            return USDT
+        except Exception as ex:
+            error(ex)
+            mailSender(ex)
+            continue
 
-    isLong = common.position_control(asset=asset)
-    database.set_islong(asset=asset, isLong=isLong)
-    hasBuyOrder = common.open_order_control(asset=asset, order_side='BUY')
-    database.set_hasBuyOrder(asset=asset, hasBuyOrder=hasBuyOrder)
-    hasSellOrder = common.open_order_control(asset=asset, order_side='SELL')
-    database.set_hasSellOrder(asset=asset, hasSellOrder=hasSellOrder)
 
-    coin = Coin(asset=asset)
+def TrendBuyOrder(coin):
+    USDT_AMOUNT = FetchUSDT(PAIRLIST)
 
-    # BUY CONDITIONS.
-    # If didn't purchase this asset before and buy flag equals 1, then function enters buy conditions.
-    if not coin.is_long and coin.buyFlag == 1:
+    # If BUSD amount is less than minimum value ($12) raise an exception and quit.
+    if USDT_AMOUNT < constants.MIN_USD:
+        raise Exception(constants.MIN_AMOUNT_EXCEPTION_LOG.format(Now(), coin.pair, constants.MIN_USD))
 
-        # If already have a buy order but trend signal has broken, then cancel the order. Else just pass.
-        if coin.hasBuyOrder:
-            if coin.prevPrice < coin.mavilimw and coin.sellFlag == 1:
-                common.cancel_order(asset=coin.pair, order_side=Client.SIDE_BUY)
-                database.set_hasBuyOrder(asset=coin.pair, hasBuyOrder=False)
-            else:
-                pass
+    # Previous close price - ATR for limit buy price.
+    limit = truncate(coin.prevPrice - coin.atr, coin.priceDec)
+    # Previous close price + (ATR * 90 / 100) for trigger.
+    stop = truncate(coin.prevPrice + (coin.atr * 90 / 100), coin.priceDec)
+    # Previous close price + ATR for stop limit.
+    stop_limit = truncate(coin.prevPrice + coin.atr, coin.priceDec)
+    # Quantity would calculate with USDT / stop limit price.
+    quantity = truncate(USDT_AMOUNT / stop_limit, coin.qtyDec)
+    # Submits order to Binance. Sends tweet, writes the order log both ORDER_LOG table and terminal.
+    oco_order(pair=coin.pair, side=constants.SIDE_BUY, quantity=quantity, limit=limit, stop=stop,
+              stop_limit=stop_limit)
+    database.updatePrmOrder(pair=coin.pair, column='HAS_BUY_ORDER', value=1)
 
-        # If previous close price is greater than mavilim price, then enter this condition.
-        elif coin.prevPrice > coin.mavilimw:
 
-            # If BUSD amount is less than minimum USD ($12) raise an exception and quit.
-            if USDT_AMOUNT < common.MIN_USD:
-                now = datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
-                raise Exception(logging.error(common.MIN_AMOUNT_EXCEPTION_LOG.format(now, coin.pair, common.MIN_USD)))
+def BottomBuyOrder(coin):
+    USDT_AMOUNT = FetchUSDT(PAIRLIST)
 
-            # Previous close price - ATR for limit buy level.
-            limit = common.truncate(coin.prevPrice - coin.atr, coin.priceDec)
-            stop = common.truncate(coin.prevPrice + (coin.atr * 90 / 100), coin.priceDec)
-            # Previous price + (ATR / 2) for stop limit.
-            stop_limit = common.truncate(coin.prevPrice + coin.atr, coin.priceDec)
-            # The purchase amount is calculated by USDT amount / stop limit price.
-            quantity = common.truncate(USDT_AMOUNT / stop_limit, coin.qtyDec)
+    if USDT_AMOUNT < constants.MIN_USD:
+        raise Exception(constants.MIN_AMOUNT_EXCEPTION_LOG.format(Now(), coin.pair, constants.MIN_USD))
 
-            try:
-                # Submit order to Binance. Send tweet, write log to ORDER_LOG table and terminal.
-                oco_order(pair=coin.pair,
-                          side=Client.SIDE_BUY,
-                          quantity=quantity,
-                          limit=limit,
-                          stop=stop,
-                          stop_limit=stop_limit)
-                database.set_hasBuyOrder(asset=coin.pair, hasBuyOrder=True)
-                logging.info(common.PROCESS_TIME_LOG.format(common.truncate((time.time() - start), 3)))
-            except Exception as ex:
-                logging.error(ex)
+    # Quantity information would calculate with USDT / last price.
+    quantity = truncate(USDT_AMOUNT / coin.lastPrice, coin.qtyDec)
 
-        # If Z-SCORE is less than -1 and last price is less than bottom level, submit a buy order.
-        # However, price will be less than mavilim price. So sets sell flag to 0 for preventing sell order.
-        elif coin.zScore < -1 and coin.lastPrice < coin.bottom:
-            if USDT_AMOUNT < common.MIN_USD:
-                now = datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
-                raise Exception(logging.error(common.MIN_AMOUNT_EXCEPTION_LOG.format(now, coin.pair, common.MIN_USD)))
+    # Submits order to Binance. Sends tweet, writes the order log both ORDER_LOG table and terminal.
+    TrailingStopOrder(pair=coin.pair,
+                      side=constants.SIDE_BUY,
+                      quantity=quantity,
+                      activationPrice=coin.lastPrice)
+    database.bulkUpdatePrmOrder(pair=coin.pair, columns=['HAS_BUY_ORDER', 'SELL_HOLD'], values=(1, 1))
 
-            limit = common.truncate(coin.lastPrice - coin.atr, coin.priceDec)
-            stop = common.truncate(coin.lastPrice + (coin.atr * 45 / 100), coin.priceDec)
-            stop_limit = common.truncate(coin.lastPrice + coin.atr / 2, coin.priceDec)
-            quantity = common.truncate(USDT_AMOUNT / stop_limit, coin.qtyDec)
 
-            try:
-                oco_order(pair=coin.pair,
-                          side=Client.SIDE_BUY,
-                          quantity=quantity,
-                          limit=limit,
-                          stop=stop,
-                          stop_limit=stop_limit)
-                database.set_hasBuyOrder(asset=coin.pair, hasBuyOrder=True)
-                database.set_order_flag(asset=coin.pair, side=Client.SIDE_SELL, flag=0)
-                logging.info(common.PROCESS_TIME_LOG.format(common.truncate((time.time() - start), 3)))
-            except Exception as ex:
-                logging.error(ex)
+def TrendSellOrder(coin):
+    # Previous close price - ATR for stop limit.
+    stopTrigger = truncate(coin.prevPrice - (coin.atr * 90 / 100), coin.priceDec)
+    # Previous price + (ATR / 2) for stop limit.
+    limit = truncate(coin.prevPrice - coin.atr, coin.priceDec)
+    # Quantity information would fetch from spot wallet.
+    quantity = truncate(wallet(pair=coin.pair), coin.qtyDec)
 
-    # SELL CONDITIONS.
-    # If already purchased the asset and sell flag equals 1, then enter this condition.
-    elif coin.is_long and coin.sellFlag == 1:
+    # Submits limit sell order to Binance. Sends tweet, writes log both ORDER_LOG table and terminal.
+    stopLimitOrder(pair=coin.pair, side=constants.SIDE_SELL, quantity=quantity, limit=limit,
+                   stopTrigger=stopTrigger)
+    database.updatePrmOrder(pair=coin.pair, column='HAS_SELL_ORDER', value=1)
 
-        # If there is already a sell order but sell signal has broken, then cancel the sell order.
-        if coin.hasSellOrder:
-            if coin.prevPrice > coin.mavilimw and coin.buyFlag == 1:
-                common.cancel_order(asset=coin.pair, order_side=Client.SIDE_SELL)
-                database.set_hasSellOrder(asset=coin.pair, hasSellOrder=False)
-            else:
-                pass
 
-        # If previous close price is less than mavilim price submit a sell order.
-        elif coin.prevPrice < coin.mavilimw:
+def TopSellOrder(coin):
 
-            # Previous close price + ATR value for limit sell level.
-            limit = common.truncate(coin.prevPrice + coin.atr, coin.priceDec)
-            # Previous close price - (ATR * 98 / 100) for stop trigger.
-            stop = common.truncate(coin.prevPrice - (coin.atr * 90 / 100), coin.priceDec)
-            # Previous close price - ATR for stop limit.
-            stop_limit = common.truncate(coin.prevPrice - coin.atr, coin.priceDec)
-            # Coin amount information is getting from spot wallet.
-            quantity = common.truncate(common.wallet(asset=coin.pair), coin.qtyDec)
+    # Quantity information would fetch from spot wallet.
+    quantity = truncate(wallet(pair=coin.pair), coin.qtyDec)
+    # Submit sell order to Binance. Sends tweet, writes log both ORDER_LOG table and terminal.
+    TrailingStopOrder(pair=coin.pair,
+                      side=constants.SIDE_SELL,
+                      quantity=quantity,
+                      activationPrice=coin.lastPrice)
 
-            # Submit sell order to Binance. Send tweet, write log to ORDER_LOG table and terminal.
-            try:
-                oco_order(pair=coin.pair,
-                          side=Client.SIDE_SELL,
-                          quantity=quantity,
-                          limit=limit,
-                          stop=stop,
-                          stop_limit=stop_limit)
-                database.set_hasSellOrder(asset=coin.pair, hasSellOrder=True)
-                logging.info(common.PROCESS_TIME_LOG.format(common.truncate((time.time() - start), 3)))
-            except Exception as ex:
-                logging.error(ex)
+    database.bulkUpdatePrmOrder(pair=coin.pair, columns=['HAS_SELL_ORDER', 'BUY_HOLD'], values=(1, 1))
 
-        # IF Z-SCORE is greater than 1.5 and last price is greater than top level, then submit a top sell order.
-        # However, price will be greater than mavilim price. So it sets buy flag to 0 for preventing buy order.
-        elif coin.zScore > 1.5 and coin.lastPrice > coin.top:
 
-            # Last price + ATR for limit sell level.
-            limit = common.truncate(coin.lastPrice + coin.atr, coin.priceDec)
-            # Last price - (ATR * 45 / 100) for stop trigger level.
-            stop = common.truncate(coin.lastPrice - (coin.atr * 45 / 100), coin.priceDec)
-            # Last price - (ATR / 2) for stop limit level.
-            stop_limit = common.truncate(coin.lastPrice - coin.atr / 2, coin.priceDec)
-            # Coin amount information fetching from spot wallet.
-            quantity = common.wallet(asset=coin.pair)
+def BuyFunction(coin):
+    # If there is already a buy order but buy condition has disappeared, the buy order will be canceled.
+    if coin.hasBuyOrder:
+        if coin.prevPrice < coin.mavilimw and coin.sellHold == 0:
+            cancelOrder(pair=coin.pair, order_side=constants.SIDE_BUY)
+            database.updatePrmOrder(pair=coin.pair, column='HAS_BUY_ORDER', value=0)
+        else:
+            pass
 
-            # Submit sell order to Binance. Send tweet, write log to ORDER_LOG table and terminal.
-            try:
-                oco_order(pair=coin.pair,
-                          side=Client.SIDE_SELL,
-                          quantity=quantity,
-                          limit=limit,
-                          stop=stop,
-                          stop_limit=stop_limit)
-                database.set_hasSellOrder(asset=coin.pair, hasSellOrder=True)
-                database.set_order_flag(asset=coin.pair, side=Client.SIDE_BUY, flag=0)
-                logging.info(common.PROCESS_TIME_LOG.format(common.truncate((time.time() - start), 3)))
-            except Exception as ex:
-                logging.error(ex)
+    # This condition will be entered if previous close price is above of mavilim value,
+    elif coin.prevPrice > coin.mavilimw:
+        TrendBuyOrder(coin)
 
+    # If Z-SCORE is less than -1 and last price is below bottom level, submit a buy order.
+    # However, price would below mavilim value. That's why it would set sell flag to 0 for prevent wrong sell order.
+    elif coin.zScore < -1 and coin.lastPrice < coin.bottom:
+        BottomBuyOrder(coin)
+
+
+def SellFunction(coin):
+    # If there is already a sell order but sell condition has disappeared, cancel the sell order.
+    if coin.hasSellOrder:
+        if coin.prevPrice > coin.mavilimw and coin.buyHold == 0:
+            cancelOrder(pair=coin.pair, order_side=constants.SIDE_SELL)
+            database.updatePrmOrder(pair=coin.pair, column='HAS_SELL_ORDER', value=0)
+        else:
+            pass
+
+    # If previous close price would below of mavilim price, submit a limit sell order.
+    elif coin.prevPrice < coin.mavilimw:
+        TrendSellOrder(coin)
+
+    # When Z-SCORE would greater than 1 and last price would above of top level, it'll submit a top-level sell order.
+    # However, price would be above of mavilim value. That's why it would set buy flag to 0 for prevent wrong buy order.
+    elif coin.zScore > 1 and coin.lastPrice > coin.top:
+        TopSellOrder(coin)
+
+
+def CheckHoldFlags(coin):
     # If previous close price crosses up mavilim and sell flag is 0 then set sell flag to 1.
-    if coin.prevPrice > coin.mavilimw and coin.sellFlag == 0:
-        database.set_order_flag(asset=coin.pair, side=Client.SIDE_SELL, flag=1)
+    if coin.prevPrice > coin.mavilimw and coin.sellHold == 1:
+        database.updatePrmOrder(pair=coin.pair, column='SELL_HOLD', value=0)
     # If previous close price crosses down mavilim and buy flag is 0 then buy flag to 1
-    elif coin.prevPrice < coin.mavilimw and coin.buyFlag == 0:
-        database.set_order_flag(asset=coin.pair, side=Client.SIDE_BUY, flag=1)
+    elif coin.prevPrice < coin.mavilimw and coin.buyHold == 1:
+        database.updatePrmOrder(pair=coin.pair, column='BUY_HOLD', value=0)
 
 
-# MAIN AND INFINITE LOOP FUNCTION.
-def bot():
-    global pairList
-    hasPosList = common.initializer(pair_list=pairList)
-    if len(hasPosList) > 0:
-        logging.info(common.HAVE_ASSET_LOG.format(', '.join(hasPosList)))
-    del hasPosList
+def Trader(pair):
+    try:
+        coin = Coin(pair=pair)
+        info(constants.INITIAL_LOG.format(Now(), coin.pair, coin.lastPrice, coin.zScore, coin.top, coin.bottom))
+
+        # BUY CONDITIONS.
+        # If didn't purchase the asset before and buy flag equals 0, then enter this condition.
+        if not coin.isLong and coin.buyHold == 0:
+            BuyFunction(coin=coin)
+
+        # SELL CONDITIONS.
+        # If already purchased the asset and sell flag equals 0, then enter this condition.
+        if coin.isLong and coin.sellHold == 0:
+            SellFunction(coin=coin)
+
+        CheckHoldFlags(coin=coin)
+    except BinanceAPIException as e:
+        if e.code == -1021:  # If exception is about a timestamp issue, ignore and don't notify that exception.
+            pass
+        else:
+            error(e)
+            mailSender(traceback.format_exc())
+    except Exception as ex:
+        error(ex)
+        mailSender(traceback.format_exc())
+    else:
+        pass
+
+
+def MultiProcessTrader():
+    startTime = perf_counter()
+    processes = [multiprocessing.Process(target=Trader, args=[pair]) for pair in PAIRLIST]
+    for process in processes:
+        process.start()
+    for process in processes:
+        process.join()
+    finishTime = perf_counter()
+    info(constants.PROCESS_TIME_LOG.format(truncate(finishTime - startTime, 2)))
+    sleep(10)
+    system('clear')
+
+
+# MAIN AND ASYNCHRONOUS LOOP FUNCTION.
+def Bot():
+    initializer(PAIRLIST)
     while 1:
-        USDT_AMOUNT = common.usd_alloc(pairList)
-        for pair in pairList:
-            try:
-                trader(asset=pair, USDT_AMOUNT=USDT_AMOUNT)
-                time.sleep(10)
-            except Exception as ex:
-                logging.error(ex)
-            else:
-                pass
+        MultiProcessTrader()
 
 
-start_now = datetime.now().replace(microsecond=0).strftime("%d/%m/%Y %H:%M:%S")
-log = common.START_LOG.format(start_now, ", ".join(pairList))
-common.tweet(log)
-logging.info(log)
-bot()
+if __name__ == '__main__':
+    info(constants.START_LOG.format(Now(), ", ".join(PAIRLIST)))
+    Bot()

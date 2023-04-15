@@ -1,7 +1,5 @@
 import os
 import sqlite3
-import common
-import constants
 
 path = os.path.dirname(__file__)
 database = path + "/data/TraderBot.db"
@@ -12,25 +10,26 @@ SQL_CREATE_ORDER_LOG_TABLE = """ CREATE TABLE IF NOT EXISTS ORDER_LOG (
                                     PAIR TEXT,
                                     ORDER_SIDE TEXT,
                                     QUANTITY REAL,
-                                    PRICE REAL,
-                                    STOP_PRICE REAL); """
+                                    PRICE REAL); """
 
 SQL_CREATE_PRM_ORDER_TABLE = """ CREATE TABLE IF NOT EXISTS PRM_ORDER (
                                     PAIR TEXT UNIQUE,
                                     PRICE_DECIMAL INTEGER,
                                     QUANTITY_DECIMAL INTEGER,
                                     MINIMUM_QUANTITY REAL,
-                                    IS_LONG INTEGER,
-                                    BUY_HOLD INTEGER,
-                                    SELL_HOLD INTEGER,
-                                    HAS_BUY_ORDER INTEGER,
-                                    HAS_SELL_ORDER INTEGER); """
+                                    LONG INTEGER,
+                                    SHORT INTEGER,
+                                    QUANTITY REAL,
+                                    LONG_HOLD INTEGER,
+                                    SHORT_HOLD INTEGER,
+                                    TRAILING_STOP_LONG_ORDER_ID INTEGER,
+                                    TRAILING_STOP_SHORT_ORDER_ID INTEGER); """
 
-SQL_INSERT_INTO_ORDER_LOG = ''' INSERT INTO ORDER_LOG(ORDER_ID,INSTANCE_ID,PAIR,ORDER_SIDE,QUANTITY,PRICE,STOP_PRICE) 
-VALUES(?,?,?,?,?,?,?); '''
+SQL_INSERT_INTO_ORDER_LOG = ''' INSERT INTO ORDER_LOG(ORDER_ID,INSTANCE_ID,PAIR,ORDER_SIDE,QUANTITY,PRICE) 
+VALUES(?,?,?,?,?,?); '''
 
-SQL_INSERT_INTO_PRM_ORDER = ''' INSERT INTO PRM_ORDER(PAIR,PRICE_DECIMAL,QUANTITY_DECIMAL,MINIMUM_QUANTITY,IS_LONG,BUY_HOLD,SELL_HOLD,HAS_BUY_ORDER,HAS_SELL_ORDER) 
-VALUES(?,?,?,?,?,?,?,?,?); '''
+SQL_INSERT_INTO_PRM_ORDER = ''' INSERT INTO PRM_ORDER(PAIR,PRICE_DECIMAL,QUANTITY_DECIMAL,MINIMUM_QUANTITY,LONG,SHORT,QUANTITY,LONG_HOLD,SHORT_HOLD,TRAILING_STOP_LONG_ORDER_ID,TRAILING_STOP_SHORT_ORDER_ID) 
+VALUES(?,?,?,?,?,?,?,?,?,?,?); '''
 
 SQL_SELECT_FROM_PRM_ORDER = ''' SELECT * FROM PRM_ORDER WHERE PAIR=? '''
 
@@ -40,23 +39,19 @@ SQL_UPDATE_PRM_ORDER = ''' UPDATE PRM_ORDER SET {} WHERE PAIR=?'''
 
 SQL_DELETE_FROM_ORDER_LOG = ''' DELETE FROM ORDER_LOG WHERE PAIR=? AND ORDER_ID = ?'''
 
-UPDATE_COLUMNS = ['IS_LONG', 'HAS_BUY_ORDER', 'HAS_SELL_ORDER']
-
-PAIRLIST = constants.PAIRLIST
+UPDATE_COLUMNS = ['LONG', 'SHORT', 'TRAILING_STOP_LONG_ORDER_ID', 'TRAILING_STOP_SHORT_ORDER_ID']
 
 
-def createConnection():
-    conn = None
+def connection():
     try:
         conn = sqlite3.connect(database)
         return conn
     except Exception as ex:
         print(ex)
-    return conn
 
 
-def createOrderLogTable():
-    conn = createConnection()
+def create_order_log():
+    conn = connection()
     cursor = conn.cursor()
     try:
         cursor.execute(SQL_CREATE_ORDER_LOG_TABLE)
@@ -64,8 +59,8 @@ def createOrderLogTable():
         print(e)
 
 
-def createPrmOrderTable():
-    conn = createConnection()
+def create_prm_order():
+    conn = connection()
     cursor = conn.cursor()
     try:
         cursor.execute(SQL_CREATE_PRM_ORDER_TABLE)
@@ -74,8 +69,8 @@ def createPrmOrderTable():
 
 
 # This function returns all values of parameters.
-def selectAllFromPrmOrder(pair):
-    conn = createConnection()
+def select_prm_order(pair):
+    conn = connection()
     cursor = conn.cursor()
     try:
         pair = (pair,)
@@ -88,8 +83,8 @@ def selectAllFromPrmOrder(pair):
         conn.close()
 
 
-def insertIntoPrmOrder(parameters):
-    conn = createConnection()
+def insert_prm_order(parameters):
+    conn = connection()
     cursor = conn.cursor()
     try:
         cursor.execute(SQL_INSERT_INTO_PRM_ORDER, parameters)
@@ -100,8 +95,8 @@ def insertIntoPrmOrder(parameters):
         conn.close()
 
 
-def selectAllFromOrderLog(pair):
-    conn = createConnection()
+def select_order_log(pair):
+    conn = connection()
     cursor = conn.cursor()
     try:
         pair = (pair,)
@@ -114,9 +109,7 @@ def selectAllFromOrderLog(pair):
         conn.close()
 
 
-# orderLogParams1 = (1234, '01/10/2022 13:14:14', 'DYDXBUSD', 'BUY', 5.2, 1.27, 1.37)
-# insertIntoOrderLog(orderLogParameters=orderLogParams1)
-def insertIntoOrderLog(orderLogParameters):
+def insert_order_log(orderLogParameters):
     # ORDER_ID
     # INSTANCE_ID
     # PAIR
@@ -124,7 +117,7 @@ def insertIntoOrderLog(orderLogParameters):
     # QUANTITY
     # PRICE
     # STOP_PRICE
-    conn = createConnection()
+    conn = connection()
     cursor = conn.cursor()
     try:
         cursor.execute(SQL_INSERT_INTO_ORDER_LOG, orderLogParameters)
@@ -135,11 +128,11 @@ def insertIntoOrderLog(orderLogParameters):
         conn.close()
 
 
-def bulkUpdatePrmOrder(pair, columns, values):
+def prm_order_bulk_update(pair, columns, values):
     query = ""
     for column in columns:
         query = query + column + ' = ?,'
-    conn = createConnection()
+    conn = connection()
     c = conn.cursor()
     query = query[:-1]
     try:
@@ -152,8 +145,8 @@ def bulkUpdatePrmOrder(pair, columns, values):
         conn.close()
 
 
-def updatePrmOrder(pair, column, value):
-    conn = createConnection()
+def update_prm_order(pair, column, value):
+    conn = connection()
     cursor = conn.cursor()
     try:
         column = column + "=?"
@@ -167,15 +160,15 @@ def updatePrmOrder(pair, column, value):
         conn.close()
 
 
-def getLatestOrderFromOrderLog(pair):
-    rows = selectAllFromOrderLog(pair=pair)
+def get_latest_order_from_order_log(pair):
+    rows = select_order_log(pair=pair)
     # Get orderID of the latest row of order_log table.
     orderId = rows[-1][0]
     return orderId
 
 
-def removeLogFromOrderLog(pair, orderId):
-    conn = createConnection()
+def remove_from_order_log(pair, orderId):
+    conn = connection()
     cursor = conn.cursor()
     try:
         parameters = (pair, orderId)
@@ -185,39 +178,3 @@ def removeLogFromOrderLog(pair, orderId):
     except Exception as ex:
         print(ex)
         conn.close()
-
-
-def initPrmOrderTable(pair):
-    createPrmOrderTable()
-    createOrderLogTable()
-    rows = selectAllFromPrmOrder(pair=pair)
-    if len(rows) == 0:
-        priceDec, qtyDec = common.decimal_place(pair=pair)
-        minQty = common.getMinimumQuantity(pair=pair)
-        isLong = 0          # Default value
-        buyHold = 0         # Default value
-        sellHold = 0        # Default value
-        hasBuyOrder = 0     # Default value
-        hasSellOrder = 0    # Default value
-        parameters = (pair, priceDec, qtyDec, minQty, isLong, buyHold, sellHold, hasBuyOrder, hasSellOrder)
-        insertIntoPrmOrder(parameters=parameters)
-
-
-def getHasBuyOrder(pair):
-    data = selectAllFromPrmOrder(pair=pair)
-    return data[-1][7]
-
-
-def getIsLong(pair):
-    data = selectAllFromPrmOrder(pair=pair)
-    return data[-1][4]
-
-
-def getDecimals(pair):
-    data = selectAllFromPrmOrder(pair=pair)
-    return data[-1][1], data[-1][2]
-
-
-def getMinimumQuantity(pair):
-    data = selectAllFromPrmOrder(pair=pair)
-    return data[-1][3]

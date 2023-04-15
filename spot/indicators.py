@@ -2,8 +2,7 @@ import talib
 import common
 import numpy
 
-RSI_PERIOD = 14
-ATR_PERIOD = 14
+from constants import RSI_PERIOD, ATR_PERIOD
 
 
 # Calculates and returns RSI (Relative Strength Index) value.
@@ -42,7 +41,7 @@ def mavilimw(close):
     return avg6
 
 
-def mavilimw_bullandbear(close, truncate):
+def mavilimBullBear(close, truncate):
     mavilimw_array = mavilimw(close=close)
     # Removing the first len(close) - length(mavilimw) of elements so its size will be same with MAVILIMW array.
     close = close[len(close) - len(mavilimw_array):]
