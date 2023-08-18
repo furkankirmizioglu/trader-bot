@@ -45,6 +45,7 @@ RECEIVER_EMAIL = config.get('Gmail', 'receiver_email')
 
 EMAIL_FORMAT = 'Subject: {}\n\n{}'
 EMAIL_SUBJECT = "TraderBot Futures - An Exception Occurred!"
+EMAIL_SUBJECT_TRADE = "TraderBot Futures - New Order Submitted!"
 
 FIREBASE_DEVICE_KEY = config.get('FirebaseAPI', 'device_key')
 
