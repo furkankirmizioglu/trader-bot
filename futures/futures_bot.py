@@ -14,7 +14,6 @@ import futures_database as database
 from futures_orders import marketOrder, stopMarketOrder, TrailingStopOrder
 from futures_coin import Coin
 
-
 PAIRLIST = constants.PAIRLIST
 basicConfig(level=INFO)
 
@@ -47,6 +46,7 @@ def bottom_long(coin):
             log = constants.TRAILING_ORDER_LOG(common.now(), constants.LONG, coin.pair, coin.lastPrice)
             common.tweet(log)
             common.notifier(log)
+            common.send_order_info_mail(log)
             info(log)
         elif coin.short == 0 and coin.trailingStopLongOrderId == 0:
             # ---------- LONG MARKET ORDER KOD BLOĞU BAŞLANGICI ----------
@@ -64,6 +64,7 @@ def bottom_long(coin):
                                            values=(1, 1, quantity))
             log = constants.FUTURES_MARKET_ORDER_LOG.format(common.now(), constants.LONG, coin.pair, coin.lastPrice)
             common.notifier(log)
+            common.send_order_info_mail(log)
             common.tweet(log)
             info(log)
 
@@ -76,6 +77,7 @@ def bottom_long(coin):
             stopMarketOrder(pair=coin.pair, side=constants.SIDE_SELL, stopPrice=stop_price)
             log = constants.FUTURES_STOP_ORDER_LOG.format(common.now(), coin.pair, constants.SHORT, stop_price)
             common.notifier(log)
+            common.send_order_info_mail(log)
             common.tweet(log)
             info(log)
 
@@ -97,6 +99,7 @@ def trend_short(coin):
             log = constants.CLOSE_POSITION_LOG.format(common.now(), coin.pair, constants.LONG, coin.lastPrice)
             common.tweet(log)
             common.notifier(log)
+            common.send_order_info_mail(log)
             info(log)
 
         USDT = fetch_usdt(pairlist=PAIRLIST)
@@ -113,6 +116,7 @@ def trend_short(coin):
                                        values=(1, quantity))
         log = constants.FUTURES_MARKET_ORDER_LOG.format(common.now(), constants.SHORT, coin.pair, coin.lastPrice)
         common.notifier(log)
+        common.send_order_info_mail(log)
         common.tweet(log)
         info(log)
 
@@ -132,6 +136,7 @@ def trend_long(coin):
             log = constants.CLOSE_POSITION_LOG.format(common.now(), coin.pair, constants.SHORT, coin.lastPrice)
             common.tweet(log)
             common.notifier(log)
+            common.send_order_info_mail(log)
             info(log)
 
         # Eğer long pozisyon yoksa anlık fiyattan yeni long pozisyon açılır.
@@ -148,6 +153,7 @@ def trend_long(coin):
                                        values=(1, quantity))
         log = constants.FUTURES_MARKET_ORDER_LOG.format(common.now(), constants.LONG, coin.pair, coin.lastPrice)
         common.notifier(log)
+        common.send_order_info_mail(log)
         common.tweet(log)
         info(log)
 
@@ -171,6 +177,7 @@ def top_short(coin):
             log = constants.TRAILING_ORDER_LOG(common.now(), constants.SHORT, coin.pair, coin.lastPrice)
             common.tweet(log)
             common.notifier(log)
+            common.send_order_info_mail(log)
             info(log)
         # Eğer artık long pozisyon taşınmıyorsa ve trailing order kapandıysa short pozisyon açılır ve stop değeri belirlenir.
         elif coin.long == 0 and coin.trailingStopShortOrderId == 0:
@@ -189,6 +196,7 @@ def top_short(coin):
                                            values=(1, 1, quantity))
             log = constants.FUTURES_MARKET_ORDER_LOG.format(common.now(), constants.SHORT, coin.pair, coin.lastPrice)
             common.notifier(log)
+            common.send_order_info_mail(log)
             common.tweet(log)
             info(log)
 
@@ -203,6 +211,7 @@ def top_short(coin):
                             stopPrice=stop_price)
             log = constants.FUTURES_STOP_ORDER_LOG.format(common.now(), coin.pair, constants.LONG, stop_price)
             common.notifier(log)
+            common.send_order_info_mail(log)
             common.tweet(log)
             info(log)
 
@@ -222,7 +231,8 @@ def check_trailing_order_status(coin):
         status = common.check_order_status(pair=coin.pair, order_id=coin.trailingStopLongOrderId)
         if status == 'FILLED':
             database.prm_order_bulk_update(pair=coin.pair,
-                                           columns=[constants.SHORT, constants.TRAILING_STOP_LONG_ORDER_ID, constants.QUANTITY],
+                                           columns=[constants.SHORT, constants.TRAILING_STOP_LONG_ORDER_ID,
+                                                    constants.QUANTITY],
                                            values=(0, 0, 0))
             coin.short = 0
             coin.trailingStopLongOrderId = 0
@@ -232,7 +242,8 @@ def check_trailing_order_status(coin):
         status = common.check_order_status(pair=coin.pair, order_id=coin.trailingStopShortOrderId)
         if status == 'FILLED':
             database.prm_order_bulk_update(pair=coin.pair,
-                                           columns=[constants.LONG, constants.TRAILING_STOP_SHORT_ORDER_ID, constants.QUANTITY],
+                                           columns=[constants.LONG, constants.TRAILING_STOP_SHORT_ORDER_ID,
+                                                    constants.QUANTITY],
                                            values=(0, 0, 0))
             coin.long = 0
             coin.trailingStopShortOrderId = 0
@@ -262,6 +273,9 @@ def trader(coin):
         if e.code != -1021:  # If exception is about a timestamp issue, ignore it and don't notify that exception.
             error(e)
             common.send_mail(traceback.format_exc())
+    except Exception as ex:
+        error(ex)
+        common.send_mail(traceback.format_exc())
 
 
 # MAIN AND INFINITE LOOP FUNCTION.

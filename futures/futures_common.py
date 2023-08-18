@@ -90,6 +90,17 @@ def send_mail(exceptionMessage):
     except Exception as ex:
         info(ex)
 
+def send_order_info_mail(message):
+    try:
+        smtpConn = SMTP('smtp.gmail.com', 587)
+        smtpConn.starttls()
+        smtpConn.login(constants.SENDER_EMAIL, constants.EMAIL_PASSWORD)
+        message = constants.EMAIL_FORMAT.format(constants.EMAIL_SUBJECT_TRADE, message)
+        smtpConn.sendmail(constants.SENDER_EMAIL, constants.RECEIVER_EMAIL, message)
+        smtpConn.quit()
+    except Exception as ex:
+        info(ex)
+
 
 def initializer(pairList):
     database.create_prm_order()
@@ -164,8 +175,11 @@ def check_order_status(pair, order_id):
 def tweet(status):
     auth = tweepy.OAuthHandler(constants.TWITTER_API_KEY, constants.TWITTER_API_SECRET_KEY)
     auth.set_access_token(constants.TWITTER_ACCESS_TOKEN, constants.TWITTER_ACCESS_SECRET_TOKEN)
-    twitter = tweepy.API(auth)
-    twitter.update_status(status)
+    twitter = tweepy.Client(consumer_key=constants.TWITTER_API_KEY,
+                            consumer_secret=constants.TWITTER_API_SECRET_KEY,
+                            access_token=constants.TWITTER_ACCESS_TOKEN,
+                            access_token_secret=constants.TWITTER_ACCESS_SECRET_TOKEN)
+    twitter.create_tweet(text=status)
 
 
 def notifier(logText):
