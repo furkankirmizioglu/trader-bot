@@ -85,7 +85,7 @@ def send_mail(exceptionMessage):
         smtpConn.starttls()
         smtpConn.login(constants.SENDER_EMAIL, constants.EMAIL_PASSWORD)
         exceptionMessage = constants.EMAIL_FORMAT.format(constants.EMAIL_SUBJECT, exceptionMessage)
-        smtpConn.sendmail(constants.SENDER_EMAIL, constants.RECEIVER_EMAIL, exceptionMessage)
+        smtpConn.sendmail(from_addr=constants.SENDER_EMAIL, to_addrs=constants.RECEIVER_EMAIL, msg=exceptionMessage)
         smtpConn.quit()
     except Exception as ex:
         info(ex)
@@ -97,7 +97,7 @@ def send_order_info_mail(message):
         smtpConn.starttls()
         smtpConn.login(constants.SENDER_EMAIL, constants.EMAIL_PASSWORD)
         message = constants.EMAIL_FORMAT.format(constants.EMAIL_SUBJECT_TRADE, message)
-        smtpConn.sendmail(constants.SENDER_EMAIL, constants.RECEIVER_EMAIL, message)
+        smtpConn.sendmail(from_addr=constants.SENDER_EMAIL, to_addrs=constants.RECEIVER_EMAIL, msg=message)
         smtpConn.quit()
     except Exception as ex:
         info(ex)
@@ -152,7 +152,7 @@ def usdt_balance():
     balance = client.futures_account_balance()
     for x in balance:
         if x['asset'] == constants.USDT:
-            return float(x['withdrawAvailable'])
+            return float(x['availableBalance'])
 
 
 # Sets amount of purchasing dynamically.
@@ -180,7 +180,8 @@ def tweet(status):
                             consumer_secret=constants.TWITTER_API_SECRET_KEY,
                             access_token=constants.TWITTER_ACCESS_TOKEN,
                             access_token_secret=constants.TWITTER_ACCESS_SECRET_TOKEN)
-    twitter.create_tweet(text=status)
+    if constants.NOTIFIER:
+        twitter.create_tweet(text=status)
 
 
 def notifier(message_text):
