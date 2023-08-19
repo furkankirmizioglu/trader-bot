@@ -1,7 +1,9 @@
 
 # TraderBot
 
-TraderBot is a Python based algorithmic trading application that runs on Binance cryptocurrency exchange. It can trade in both spot and futures markets. It runs on Raspberry Pi 4 as a local server. 
+“If you don't find a way to make money while you sleep, you will work until you die.” - Warren Buffett
+
+TraderBot is a Python based algorithmic trading application. It looks to trade opportunities for 24/7, makes trades while you're working or sleeping. It trades on Binance, both spot and futures markets. It runs on Raspberry Pi 4 as a local server. 
 
 When an order is placed, it sends push notification and tweet to inform user. You can follow our Twitter account (https://twitter.com/traderbotstatus)
 
