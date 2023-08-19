@@ -90,6 +90,7 @@ def send_mail(exceptionMessage):
     except Exception as ex:
         info(ex)
 
+
 def send_order_info_mail(message):
     try:
         smtpConn = SMTP('smtp.gmail.com', 587)
@@ -182,15 +183,15 @@ def tweet(status):
     twitter.create_tweet(text=status)
 
 
-def notifier(logText):
+def notifier(message_text):
     # See documentation on defining a message payload.
     notification = messaging.Notification(
         title=constants.NOTIFIER_TITLE,
-        body=logText
+        body=message_text
     )
     message = messaging.Message(
-        token=constants.FIREBASE_DEVICE_KEY,
-        notification=notification
+        notification=notification,
+        topic="TraderBot"
     )
     # Send a message to the device corresponding to the provided
     # registration token.
