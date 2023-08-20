@@ -36,5 +36,6 @@ Welcome to algorithmic trading world, this is your trend follower friend.
 - Python
 - Firebase Cloud Messaging
 
-**Physical:** Raspberry Pi 4 Model B
+**Physical:** 
+- Raspberry Pi 4 Model B
 
