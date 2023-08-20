@@ -1,15 +1,15 @@
 
 # TraderBot
 
-“If you don't find a way to make money while you sleep, you will work until you die.” - Warren Buffett
+As the Warren Buffett said: "If you don't find a way to make money while you sleep, you will work until you die."
 
-TraderBot is a Python based algorithmic trading application. It looks to trade opportunities for 24/7, makes trades while you're working or sleeping. It trades on Binance, both spot and futures markets. It runs on Raspberry Pi 4 as a local server. 
+Welcome to TraderBot: an algorithmic trading application developed in Python. Designed to seize trading opportunities 24/7, TraderBot operates autonomously while you focus on other aspects of your life. It adeptly navigates both the spot and futures markets on Binance, ensuring you never miss a chance to capitalize on potential gains. This cutting-edge solution is hosted on a Raspberry Pi 4, serving as a reliable local server.
 
-When an order is placed, it sends push notification and tweet to inform user. You can follow our Twitter account (https://twitter.com/traderbotstatus)
+With every executed order, TraderBot keeps you informed. It promptly sends push notifications and tweets to ensure you're always in the trade. Stay updated by following our Twitter account, [TraderBotStatus](https://twitter.com/traderbotstatus).
 
-If an exception occur while application is running, it sends an e-mail includes exception details to admins. (Currently only to me. 🙃)
+In the unlikely event of an exception during runtime, TraderBot remains proactive. It promptly sends detailed exception logs via email to designated administrators (currently, this function is directed to me 🙃).
 
-
+Welcome to algorithmic trading world, this is your trend follower friend.
 
 ## Screenshots
 
@@ -24,15 +24,17 @@ If an exception occur while application is running, it sends an e-mail includes 
 
 ## Features
 
-- Trading on spot & futures market.
-- Integration with Twitter.
+- Trades on Binance, both spot & futures markets on designated parities.
+- Real-time Twitter account.
 - Sends push notification through Google Firebase via Android mobile app.
 - Exception handling & alert mechanism.
 
 
 ## Tech Stack
 
-**Server:** Python, Google Firebase
+**Server:** 
+- Python
+- Firebase Cloud Messaging
 
-**Physical:** Raspberry Pi Model 4/B
+**Physical:** Raspberry Pi 4 Model B
 
